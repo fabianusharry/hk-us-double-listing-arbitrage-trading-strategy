@@ -6,7 +6,8 @@ Pipeline per pair (clean_pair):
   2. align the legs    -> keep dates on which BOTH legs traded; log every other date
   3. attach FX         -> HKD=X close of the previous FX business day (t-1)
   4. attach ADR ratio  -> date-dependent, from config
-  5. dividend fixes    -> add-back amounts for mismatched ex-dates (signal only)
+  5. evening inputs   -> previous US session close (for the evening reading)
+  6. dividend fixes    -> add-back amounts per reading (signal only)
 
 Every dropped date, FX fill, bar flag and dividend correction is logged to
 results/logs/ by clean_all(). Nothing is dropped silently.
@@ -18,6 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import exchange_calendars as xc
+import numpy as np
 import pandas as pd
 
 import config
@@ -194,59 +196,102 @@ def match_dividends(name: str, us: pd.DataFrame, hk: pd.DataFrame, fx: pd.DataFr
     return pd.DataFrame(rows, columns=["hk_ex", "hk_amount", "us_ex", "us_amount", "status"])
 
 
-def dividend_adjustments(
-    name: str, dates: pd.DatetimeIndex, events: pd.DataFrame
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Add-back amounts that remove fake spread jumps from mismatched ex-dates.
+def add_backs(
+    index: pd.DatetimeIndex, us_obs: pd.DatetimeIndex, hk_obs: pd.DatetimeIndex, events: pd.DataFrame
+) -> tuple[pd.DataFrame, list[int]]:
+    """Dividend add-backs for one spread reading.
 
-    Timing: the spread compares the US open on t with the HK close on t, so the
-    US leg is ex-dividend on t iff t >= us_ex, and the HK leg iff t >= hk_ex.
-    On aligned dates in [first ex-date, second ex-date) one leg is ex and the
-    other is not; there we add the declared dividend back to the leg that went
-    ex first. Dividends are announced weeks ahead, so this uses no future data.
+    A reading compares a US price observed on date us_obs[i] with an HK price
+    observed on hk_obs[i]. The US price is ex-dividend iff us_obs >= us_ex; the
+    HK price iff hk_obs >= hk_ex. When exactly one leg is ex, its declared
+    dividend is added back so the reading has no artificial jump.
+    Output: (adj with columns us, hk indexed by `index`; days adjusted per event).
+    """
+    adj = pd.DataFrame(0.0, index=index, columns=["us", "hk"])
+    days = []
+    for ev in events.itertuples(index=False):
+        if ev.status != "matched":
+            days.append(0)
+            continue
+        us_ex = np.asarray(us_obs >= ev.us_ex)
+        hk_ex = np.asarray(hk_obs >= ev.hk_ex)
+        adj.loc[hk_ex & ~us_ex, "hk"] += ev.hk_amount
+        adj.loc[us_ex & ~hk_ex, "us"] += ev.us_amount
+        days.append(int((hk_ex != us_ex).sum()))
+    return adj, days
+
+
+def dividend_adjustments(
+    name: str, dates: pd.DatetimeIndex, us_prev_dates: pd.DatetimeIndex, events: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Add-back amounts that remove fake spread jumps from ex-date mismatches.
+
+    Morning reading (US open t vs HK close t): both legs observed on t, so a
+    correction is needed only when the two ex-dates differ; on aligned dates in
+    [first ex-date, second ex-date) the leg that went ex first gets its dividend
+    added back.
+    Evening reading (US close of the previous US session vs HK open t): the legs
+    are observed on different dates, so even a same-day ex-date needs one day of
+    correction (the HK open on ex-date t is ex, the US close the evening before
+    is still cum).
+    Dividends are announced weeks ahead, so this uses no future data.
     Used for the spread SIGNAL only; P&L must use raw prices + cash dividends.
 
     Output: (adj, log)
-      - adj: index `dates`; div_adj_us (USD per ADR), div_adj_hk (HKD per share).
-      - log: one row per event with action and number of aligned days adjusted.
+      - adj: index `dates`; div_adj_us, div_adj_hk (morning), div_adj_us_eve,
+        div_adj_hk_eve (evening); US in USD per ADR, HK in HKD per share.
+      - log: one row per event with the morning action and days adjusted per reading.
     """
-    adj = pd.DataFrame(0.0, index=dates, columns=["div_adj_us", "div_adj_hk"])
+    morning, days_m = add_backs(dates, dates, dates, events)
+    evening, days_e = add_backs(dates, us_prev_dates, dates, events)
+    adj = pd.DataFrame({
+        "div_adj_us": morning["us"], "div_adj_hk": morning["hk"],
+        "div_adj_us_eve": evening["us"], "div_adj_hk_eve": evening["hk"],
+    }, index=dates)
+
     log = []
-    for ev in events.itertuples(index=False):
-        row = {"pair": name, "hk_ex": ev.hk_ex, "hk_amount_hkd": ev.hk_amount,
-               "us_ex": ev.us_ex, "us_amount_usd": ev.us_amount, "status": ev.status,
-               "action": "", "days_adjusted": 0, "first_adjusted": pd.NaT, "last_adjusted": pd.NaT}
+    for ev, dm, de in zip(events.itertuples(index=False), days_m, days_e):
         if ev.status != "matched":
-            row["action"] = "none (unmatched; check manually)"
+            action = "none (unmatched; check manually)"
         elif ev.hk_ex == ev.us_ex:
-            row["action"] = "none (same ex-date)"
+            action = "none (same ex-date)"
+        elif ev.hk_ex < ev.us_ex:
+            action = "add back HK dividend (HK ex first)"
         else:
-            first, second = sorted([ev.hk_ex, ev.us_ex])
-            window = dates[(dates >= first) & (dates < second)]
-            if ev.hk_ex < ev.us_ex:
-                adj.loc[window, "div_adj_hk"] += ev.hk_amount
-                row["action"] = "add back HK dividend (HK ex first)"
-            else:
-                adj.loc[window, "div_adj_us"] += ev.us_amount
-                row["action"] = "add back US dividend (US ex first)"
-            row["days_adjusted"] = len(window)
-            if len(window):
-                row["first_adjusted"], row["last_adjusted"] = window.min(), window.max()
-        log.append(row)
+            action = "add back US dividend (US ex first)"
+        log.append({"pair": name, "hk_ex": ev.hk_ex, "hk_amount_hkd": ev.hk_amount,
+                    "us_ex": ev.us_ex, "us_amount_usd": ev.us_amount, "status": ev.status,
+                    "action": action, "days_adjusted": dm, "days_adjusted_eve": de})
     return adj, pd.DataFrame(log)
+
+
+def previous_us_session(us: pd.DataFrame, dates: pd.DatetimeIndex) -> pd.DataFrame:
+    """Last US close strictly before each date (the US side of the evening reading).
+
+    Uses the raw US series, so a US session that is not an aligned pair date
+    (e.g. an HK holiday) still counts as "the evening before".
+    Output: DataFrame indexed by `dates` with us_prev_date and us_close_prev
+    (NaT/NaN when no earlier US session exists).
+    """
+    pos = us.index.searchsorted(dates, side="left") - 1
+    valid = pos >= 0
+    prev = pd.DatetimeIndex([us.index[p] if ok else pd.NaT for p, ok in zip(pos, valid)])
+    close = [us["close"].iloc[p] if ok else float("nan") for p, ok in zip(pos, valid)]
+    return pd.DataFrame({"us_prev_date": prev, "us_close_prev": close}, index=dates)
 
 
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 def clean_pair(name: str, frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
-    """Run steps 1-5 for one pair.
+    """Run steps 1-6 for one pair.
 
     Input: pair name and snapshot frames from data.load_raw() (already behind the
     OOS firewall).
     Output: (cleaned, logs). cleaned has index `date` and columns
       ratio, us_open, us_close, hk_open, hk_close, hk_open_reliable,
-      fx, fx_date, fx_filled, div_adj_us, div_adj_hk.
+      us_prev_date, us_close_prev, fx, fx_date, fx_filled,
+      div_adj_us, div_adj_hk, div_adj_us_eve, div_adj_hk_eve.
     logs: dropped, fx_fills, dividends, hk_bars.
     """
     us_t, hk_t, _ = config.PAIRS[name]
@@ -263,10 +308,11 @@ def clean_pair(name: str, frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame
         aligned = aligned.drop(no_fx)
         fxd = fxd.drop(no_fx)
 
+    prev = previous_us_session(us, aligned.index)
     events = match_dividends(name, us, hk, fx)
-    adj, div_log = dividend_adjustments(name, aligned.index, events)
+    adj, div_log = dividend_adjustments(name, aligned.index, pd.DatetimeIndex(prev["us_prev_date"]), events)
 
-    cleaned = pd.concat([ratio_on(name, aligned.index), aligned, fxd, adj], axis=1)
+    cleaned = pd.concat([ratio_on(name, aligned.index), aligned, prev, fxd, adj], axis=1)
     cleaned.index.name = "date"
 
     fills = fxd[fxd["fx_filled"]]

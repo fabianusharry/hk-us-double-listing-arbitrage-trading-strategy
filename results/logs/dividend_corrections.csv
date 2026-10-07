@@ -1,32 +1,32 @@
-pair,hk_ex,hk_amount_hkd,us_ex,us_amount_usd,status,action,days_adjusted,first_adjusted,last_adjusted
-Alibaba,2023-12-20,0.9809725,2023-12-20,1.0,matched,none (same ex-date),0,,
-JD,2022-05-19,4.944007,2022-05-19,1.26,matched,none (same ex-date),0,,
-JD,2023-04-04,2.4327652,2023-04-05,0.62,matched,add back HK dividend (HK ex first),1,2023-04-04,2023-04-04
-NetEase,2020-06-11,0.364137,2020-06-11,0.232,matched,none (same ex-date),0,,
-NetEase,2020-08-27,0.46615815,2020-08-26,0.297,matched,add back US dividend (US ex first),1,2020-08-26,2020-08-26
-NetEase,2020-12-03,0.30606344,2020-12-03,0.195,matched,none (same ex-date),0,,
-NetEase,2021-03-11,0.094173364,2021-03-11,0.06,matched,none (same ex-date),0,,
-NetEase,2021-06-02,0.4708668,2021-06-02,0.3,matched,none (same ex-date),0,,
-NetEase,2021-09-13,0.37669346,2021-09-13,0.24,matched,none (same ex-date),0,,
-NetEase,2021-11-30,0.35315013,2021-11-30,0.225,matched,none (same ex-date),0,,
-NetEase,2022-03-10,0.6356702,2022-03-10,0.405,matched,none (same ex-date),0,,
-NetEase,2022-06-07,0.5053971,2022-06-07,0.322,matched,none (same ex-date),0,,
-NetEase,2022-08-31,0.5650402,2022-08-31,0.36,matched,none (same ex-date),0,,
-NetEase,2022-12-01,0.68275684,2022-12-01,0.435,matched,none (same ex-date),0,,
-NetEase,2023-03-08,0.42378014,2023-03-08,0.27,matched,none (same ex-date),0,,
-NetEase,2023-06-08,0.72984356,2023-06-08,0.465,matched,none (same ex-date),0,,
-NetEase,2023-09-07,0.82401687,2023-09-07,0.525,matched,none (same ex-date),0,,
-NetEase,2023-11-30,0.7769302,2023-11-30,0.495,matched,none (same ex-date),0,,
-YumChina,2020-11-24,0.9417336,2020-11-24,0.12,matched,none (same ex-date),0,,
-YumChina,2021-03-02,0.9417336,2021-03-02,0.12,matched,none (same ex-date),0,,
-YumChina,2021-05-24,0.9417336,2021-05-24,0.12,matched,none (same ex-date),0,,
-YumChina,2021-08-24,0.9417336,2021-08-24,0.12,matched,none (same ex-date),0,,
-YumChina,2021-11-23,0.9417336,2021-11-23,0.12,matched,none (same ex-date),0,,
-YumChina,2022-03-07,0.9417336,2022-03-07,0.12,matched,none (same ex-date),0,,
-YumChina,2022-05-27,0.9417336,2022-05-27,0.12,matched,none (same ex-date),0,,
-YumChina,2022-08-24,0.9417336,2022-08-24,0.12,matched,none (same ex-date),0,,
-YumChina,2022-11-28,0.9417336,2022-11-28,0.12,matched,none (same ex-date),0,,
-YumChina,2023-03-06,1.0202113,2023-03-06,0.13,matched,none (same ex-date),0,,
-YumChina,2023-05-30,1.0202113,2023-05-26,0.13,matched,add back US dividend (US ex first),0,,
-YumChina,2023-08-25,1.0202113,2023-08-25,0.13,matched,none (same ex-date),0,,
-YumChina,2023-11-27,1.0202113,2023-11-27,0.13,matched,none (same ex-date),0,,
+pair,hk_ex,hk_amount_hkd,us_ex,us_amount_usd,status,action,days_adjusted,days_adjusted_eve
+Alibaba,2023-12-20,0.9809725,2023-12-20,1.0,matched,none (same ex-date),0,1
+JD,2022-05-19,4.944007,2022-05-19,1.26,matched,none (same ex-date),0,1
+JD,2023-04-04,2.4327652,2023-04-05,0.62,matched,add back HK dividend (HK ex first),1,1
+NetEase,2020-06-11,0.364137,2020-06-11,0.232,matched,none (same ex-date),0,1
+NetEase,2020-08-27,0.46615815,2020-08-26,0.297,matched,add back US dividend (US ex first),1,0
+NetEase,2020-12-03,0.30606344,2020-12-03,0.195,matched,none (same ex-date),0,1
+NetEase,2021-03-11,0.094173364,2021-03-11,0.06,matched,none (same ex-date),0,1
+NetEase,2021-06-02,0.4708668,2021-06-02,0.3,matched,none (same ex-date),0,1
+NetEase,2021-09-13,0.37669346,2021-09-13,0.24,matched,none (same ex-date),0,1
+NetEase,2021-11-30,0.35315013,2021-11-30,0.225,matched,none (same ex-date),0,1
+NetEase,2022-03-10,0.6356702,2022-03-10,0.405,matched,none (same ex-date),0,1
+NetEase,2022-06-07,0.5053971,2022-06-07,0.322,matched,none (same ex-date),0,1
+NetEase,2022-08-31,0.5650402,2022-08-31,0.36,matched,none (same ex-date),0,1
+NetEase,2022-12-01,0.68275684,2022-12-01,0.435,matched,none (same ex-date),0,1
+NetEase,2023-03-08,0.42378014,2023-03-08,0.27,matched,none (same ex-date),0,1
+NetEase,2023-06-08,0.72984356,2023-06-08,0.465,matched,none (same ex-date),0,1
+NetEase,2023-09-07,0.82401687,2023-09-07,0.525,matched,none (same ex-date),0,1
+NetEase,2023-11-30,0.7769302,2023-11-30,0.495,matched,none (same ex-date),0,1
+YumChina,2020-11-24,0.9417336,2020-11-24,0.12,matched,none (same ex-date),0,1
+YumChina,2021-03-02,0.9417336,2021-03-02,0.12,matched,none (same ex-date),0,1
+YumChina,2021-05-24,0.9417336,2021-05-24,0.12,matched,none (same ex-date),0,1
+YumChina,2021-08-24,0.9417336,2021-08-24,0.12,matched,none (same ex-date),0,1
+YumChina,2021-11-23,0.9417336,2021-11-23,0.12,matched,none (same ex-date),0,1
+YumChina,2022-03-07,0.9417336,2022-03-07,0.12,matched,none (same ex-date),0,1
+YumChina,2022-05-27,0.9417336,2022-05-27,0.12,matched,none (same ex-date),0,1
+YumChina,2022-08-24,0.9417336,2022-08-24,0.12,matched,none (same ex-date),0,1
+YumChina,2022-11-28,0.9417336,2022-11-28,0.12,matched,none (same ex-date),0,1
+YumChina,2023-03-06,1.0202113,2023-03-06,0.13,matched,none (same ex-date),0,1
+YumChina,2023-05-30,1.0202113,2023-05-26,0.13,matched,add back US dividend (US ex first),0,0
+YumChina,2023-08-25,1.0202113,2023-08-25,0.13,matched,none (same ex-date),0,1
+YumChina,2023-11-27,1.0202113,2023-11-27,0.13,matched,none (same ex-date),0,1

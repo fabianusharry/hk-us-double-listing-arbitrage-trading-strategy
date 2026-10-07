@@ -80,10 +80,15 @@ ADR ratios verified 2026-10-07 (Deutsche Bank DR directory; see Progress log). M
 - Dividend ex-date mismatches: on aligned dates between the first and second ex-date, the declared dividend is added back to the leg that went ex first (spread signal only; P&L uses raw prices + cash dividends).
 - `spread(t) = ln(P_US_open(t)) − ln(parity_usd)`; positive = ADR rich.
 
-**Signal:** `z(t) = (spread(t) − mean_L(t−1)) / std_L(t−1)` with window L.
+**Two signal variants (decided Session 3, before any backtest):**
+- **Primary ("as pitched"):** the spread above (the *morning reading*: HK close t vs US open t; HK is the stale leg).
+- **Pre-registered secondary ("two-reading"):** `spread_2r(t) = ½[spread(t) + spread_eve(t)]`, where the *evening reading* `spread_eve(t) = ln(P_US_close(prev US session)) − ln(N * P_HK_open(t) / FX(t))` (US is the stale leg; HK opens 21:30 ET, before the US open on t, so it is known at decision time). The two readings carry timing noise from different news windows, so averaging cuts the noise while a persistent mispricing appears in both. If the evening reading is unavailable (unreliable HK open, no previous US close) `spread_2r` = the morning reading, and `n_readings` records it. Dividend add-backs are applied to each reading using each leg's own observation date.
+- Reason: Session 2–3 diagnostics show the morning reading is dominated by non-synchronous ("stale HK") noise (AR(1) β ≈ −0.95). Both variants are reported; the primary remains the test of the pitch.
+
+**Signal:** `z(t) = (s(t) − mean_L(t−1)) / std_L(t−1)` with window L, where s is the variant's spread.
 
 **Positions** (state machine per pair, +1 = long HK / short US, −1 = short HK / long US, 0 = flat):
-- Enter −1 when z > k (ADR rich); enter +1 when z < −k.
+- Enter −1 when k < z ≤ stop_z (ADR rich); enter +1 when −stop_z ≤ z < −k. No entry when |z| > stop_z: such moves are news, not mispricing (decided Session 3).
 - Exit to 0 when |z| < exit_z, or holding days ≥ H, or |z| > stop_z.
 - No new entry on the same day as an exit.
 
@@ -110,7 +115,9 @@ Support a `cost_multiplier` in {0, 0.5, 1, 2} and a break-even search.
 
 **Metrics:** cumulative return, annualised Sharpe (mean/std of daily returns × √252, risk-free = 0), max drawdown; plus trade count, hit rate, average holding days, turnover, cost drag. Report per pair and for the portfolio, in-sample vs out-of-sample.
 
-**Parameter grid (in-sample only, 36 combos):** L ∈ {20, 60, 120}, k ∈ {1.5, 2.0, 2.5}, exit_z ∈ {0, 0.5}, H ∈ {5, 10}; stop_z = 4 fixed. Choose a setting on a plateau, not an isolated peak.
+**Parameter grid (in-sample only, 36 combos per signal variant = 72 logged runs):** L ∈ {20, 60, 120}, k ∈ {1.5, 2.0, 2.5}, exit_z ∈ {0, 0.5}, H ∈ {5, 10}; stop_z = 4 fixed. Choose a setting on a plateau, not an isolated peak.
+
+**Mandatory placebo test (Session 4):** simulate two listings of one efficient price with **zero mispricing**, observed non-synchronously (HK earlier than US). The spread will look mean-reverting and the strategy will trade; gross P&L at execution prices must be ≈ 0. Profit here = a timing bug. P&L is always computed per leg from execution prices, never from spread changes.
 
 ## 7. Coding conventions
 
@@ -136,3 +143,7 @@ Update this section at the end of every session (date, what was built, open issu
   - Decisions (approved by student): FX(t) = HKD=X close of t−1 (CLAUDE.md §6 updated); zero-volume single-price HK bars dropped on normal days (Baidu, TripCom 2022-03-14) but kept on XHKG early-close days with `hk_open_reliable=False`; mismatched dividend ex-dates fixed by adding the dividend back to the leg that went ex first, for the signal only.
   - Results (2021-04-19 → 2023-12-29, ~647 days per pair): spread means −0.13% to −0.49% (ADR slightly cheap; TripCom most), std 1.2–1.4%. Dropped per pair: 32 HK holidays, 19 US holidays, 2 unexplained HK gaps (2023-09-01 Typhoon Saola, 2023-09-08 black rainstorm: real closures missing from XHKG calendar), 1 unreliable bar (Baidu/TripCom). FX fills: none. Dividends: 31 matched, 0 unmatched; 3 ex-date mismatches (JD 2023-04-04 corrected 1 day; NetEase 2020-08-26 corrected 1 day; YumChina 2023-05-26/30 needed 0 days). Spread flags (|s|>10%): Alibaba 2023-03-28 +10.5%, JD 2022-03-10 −13.6%, NetEase 2022-04-11 +10.8%, Baidu 2021-03-26 −14.4% (warm-up); all one-day spikes that close next day = news between HK close and US open, not data errors. Kept.
   - Open for Session 3–4: (a) much of the spread variance is HK being "stale" vs news in the 5.5–6.5h gap, which HK absorbs at its next open — expect very short half-lives; the strategy trades HK at the t+1 open, i.e. AFTER that catch-up, so Session 4 timing tests must prove no phantom profit from it. (b) P&L must use raw prices + cash dividends and handle dividends falling on non-aligned dates (e.g. YUMC US ex 2023-05-26, an HK holiday). (c) Respect `hk_open_reliable=False` on HK half-days in execution. (d) `exchange_calendars` emits a harmless NumPy DeprecationWarning.
+- **2026-10-07 — Session 3 (descriptive analysis, in-sample).** Discussion first: the morning spread is dominated by non-synchronous "stale HK" noise. Student approved: (1) mandatory zero-mispricing placebo test in Session 4, (2) no entry when |z| > stop_z, (3) report the persistence split, (4) pre-registered secondary signal `spread_2r` (two-reading average; §6 updated; grid = 72 runs). Built: `clean.previous_us_session`, per-reading dividend add-backs (`div_adj_*_eve`), `spread_eve`/`spread_2r`/`n_readings` in `spread.py`; `src/analysis.py` (summary stats, AR(1) half-life, ADF, ARMA(1,1) persistence split, timing diagnostics, Δspread correlations + effective bets, capture-vs-cost); 3 new figures. 47 tests.
+  - Results (2021-04-19 → 2023-12-29): morning std 1.2–1.4%, two-reading 0.9–1.1%. AR(1) β −0.75 to −0.98 (half-life 0.2–0.5 d); two-reading −0.66 to −0.93 (0.3–0.6 d). ADF rejects a unit root everywhere (p≈0), which is uninformative for near-white-noise. Persistent component: morning detected only for JD (share 7%, HL 3.4 d) and YumChina (48%, 1.1 d); two-reading detected for 5/6 (shares 18–61%, HL 0.5–1.7 d; none for TripCom). corr(morning t, evening t+1) −0.01 to 0.28. Cross-pair Δspread avg ρ 0.46 → 1.8 effective bets of 6 (two-reading 0.36 → 2.1). Persistent ADR discount: mean −0.1% to −0.5% in BOTH readings (so a real level, not timing drift); removed by the rolling mean.
+  - Falsification test (a) (half-life > ~20 d): not triggered for any pair, but the short half-life is mostly timing noise, so this is weak support. Capture-vs-cost (ρ1 × 2σ vs round trip 0.54–0.74%): below cost for every pair; YumChina closest (0.62% morning / 0.72% two-reading vs 0.74%). Prediction for Session 5: little or no net profit except possibly YumChina.
+  - Open: Session 4 placebo test + `k < |z| ≤ stop_z` entry; z-scores must handle `spread_2r` from `n_readings`; long-lag ACF bars (~0.1 at lags 4–10 for some pairs) hint at a slowly moving mean — not tested formally (multiple-testing risk).

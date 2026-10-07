@@ -127,9 +127,9 @@ def _dividend_frames(hk_ex, us_ex, hk_amt=7.8, us_amt=1.0):
     return {US: us, HK: hk, config.FX_TICKER: fx_frame()}
 
 
-def _spread(cleaned):
+def _spread(cleaned, col="spread"):
     from src.spread import build_spreads
-    return build_spreads(cleaned.reset_index())["spread"].to_numpy()
+    return build_spreads(cleaned.reset_index())[col].to_numpy()
 
 
 def test_mismatched_ex_dates_corrected_hk_first():
@@ -152,6 +152,29 @@ def test_same_ex_date_needs_no_correction():
     assert (cleaned[["div_adj_us", "div_adj_hk"]] == 0).all().all()
     assert logs["dividends"].iloc[0]["action"] == "none (same ex-date)"
     np.testing.assert_allclose(_spread(cleaned), 0.0, atol=1e-12)
+
+
+def test_evening_reading_corrected_even_for_same_ex_date():
+    # HK open on ex-date 21st is ex, but the US close on the 20th is still cum.
+    cleaned, logs = clean.clean_pair("Test", _dividend_frames("2022-04-21", "2022-04-21"))
+    assert cleaned.loc["2022-04-21", "div_adj_hk_eve"] == 7.8
+    assert logs["dividends"].iloc[0]["days_adjusted_eve"] == 1
+    for col in ["spread_eve", "spread_2r"]:
+        np.testing.assert_allclose(_spread(cleaned, col)[1:], 0.0, atol=1e-12)  # row 0 has no prev US close
+
+
+@pytest.mark.parametrize("hk_ex,us_ex", [("2022-04-21", "2022-04-25"), ("2022-04-25", "2022-04-21")])
+def test_evening_reading_flat_for_mismatched_ex_dates(hk_ex, us_ex):
+    cleaned, _ = clean.clean_pair("Test", _dividend_frames(hk_ex, us_ex))
+    np.testing.assert_allclose(_spread(cleaned, "spread_eve")[1:], 0.0, atol=1e-12)
+
+
+def test_previous_us_session_skips_non_aligned_days():
+    us = frame(bdays("2022-04-11", "2022-04-22", drop=["2022-04-15"]), np.arange(9, dtype=float) + 100)
+    prev = clean.previous_us_session(us, pd.DatetimeIndex(["2022-04-11", "2022-04-19"]))
+    assert pd.isna(prev.loc["2022-04-11", "us_prev_date"])
+    assert prev.loc["2022-04-19", "us_prev_date"] == pd.Timestamp("2022-04-18")
+    assert prev.loc["2022-04-19", "us_close_prev"] == us.loc["2022-04-18", "close"]
 
 
 def test_unmatched_dividend_logged_not_corrected():

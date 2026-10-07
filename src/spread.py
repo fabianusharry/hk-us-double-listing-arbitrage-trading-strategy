@@ -4,6 +4,13 @@ spread(t) = ln(P_US_open(t)) - ln(N * P_HK_close(t) / FX(t)); positive = ADR ric
 Timing: HK closes (16:00 HKT) before New York opens (09:30 ET), so the HK close
 on day t is known at the US open on day t. Never compare the US *close* with the
 HK close of the same date. FX(t) is the HKD=X close of t-1 (see clean.fx_for_dates).
+
+Two readings per date t, both known at the US open on t:
+  spread      (morning): US open t          vs HK close t   -> HK is the stale leg
+  spread_eve  (evening): US close prev sess vs HK open t    -> US is the stale leg
+  spread_2r = mean of the available readings (the pre-registered secondary signal).
+The readings' timing noise comes from different news windows, so averaging them
+reduces noise; a persistent mispricing shows up in both.
 """
 
 from __future__ import annotations
@@ -28,10 +35,13 @@ def compute_spread(us_open: pd.Series, hk_close: pd.Series, fx: pd.Series, ratio
 
 
 def build_spreads(cleaned: pd.DataFrame) -> pd.DataFrame:
-    """Add parity_usd, spread and in_backtest to clean.clean_all() output.
+    """Add parity_usd, spread, spread_eve, spread_2r, n_readings, in_backtest.
 
-    Dividend add-backs (div_adj_us, div_adj_hk) are applied here, so the spread
-    has no artificial jump when the two legs go ex-dividend on different dates.
+    Input: clean.clean_all() output (long format).
+    Dividend add-backs are applied per reading, so neither reading jumps when the
+    legs go ex-dividend on different observation dates.
+    spread_eve is NaN when the HK open is unreliable (half-day bar) or there is no
+    previous US close; spread_2r then equals the morning reading (n_readings = 1).
     in_backtest is True from config.START; earlier rows are rolling-window warm-up.
     """
     df = cleaned.copy()
@@ -39,13 +49,20 @@ def build_spreads(cleaned: pd.DataFrame) -> pd.DataFrame:
     hk_close = df["hk_close"] + df["div_adj_hk"]
     df["parity_usd"] = df["ratio"] * hk_close / df["fx"]
     df["spread"] = compute_spread(us_open, hk_close, df["fx"], df["ratio"])
+
+    us_prev = df["us_close_prev"] + df["div_adj_us_eve"]
+    hk_open = (df["hk_open"] + df["div_adj_hk_eve"]).where(df["hk_open_reliable"].astype(bool))
+    df["spread_eve"] = compute_spread(us_prev, hk_open, df["fx"], df["ratio"])
+
+    df["n_readings"] = df[["spread", "spread_eve"]].notna().sum(axis=1)
+    df["spread_2r"] = df[["spread", "spread_eve"]].mean(axis=1, skipna=True)
     df["in_backtest"] = df["date"] >= pd.Timestamp(config.START)
     return df
 
 
 def flag_spreads(spreads: pd.DataFrame, threshold: float = config.SPREAD_FLAG_ABS) -> pd.DataFrame:
     """Rows with |spread| > threshold, for manual review (not removed from the data)."""
-    cols = ["date", "pair", "spread", "us_open", "hk_close", "fx", "ratio", "in_backtest"]
+    cols = ["date", "pair", "spread", "spread_eve", "us_open", "hk_close", "fx", "ratio", "in_backtest"]
     return spreads.loc[spreads["spread"].abs() > threshold, cols].reset_index(drop=True)
 
 
