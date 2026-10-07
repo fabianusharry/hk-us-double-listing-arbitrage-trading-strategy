@@ -1,0 +1,45 @@
+{
+  "download_date": "2026-10-07",
+  "download_timestamp": "2026-10-07T10:31:33.118982+00:00",
+  "source": "Yahoo Finance via yfinance",
+  "yfinance_version": "1.7.0",
+  "pandas_version": "3.0.6",
+  "settings": {
+    "auto_adjust": false,
+    "actions": true,
+    "repair": false,
+    "keepna": true
+  },
+  "start_inclusive": "2019-01-01",
+  "end_exclusive": "2026-10-08",
+  "files": {
+    "BABA": "BABA_20261007.csv",
+    "9988.HK": "9988.HK_20261007.csv",
+    "JD": "JD_20261007.csv",
+    "9618.HK": "9618.HK_20261007.csv",
+    "NTES": "NTES_20261007.csv",
+    "9999.HK": "9999.HK_20261007.csv",
+    "YUMC": "YUMC_20261007.csv",
+    "9987.HK": "9987.HK_20261007.csv",
+    "BIDU": "BIDU_20261007.csv",
+    "9888.HK": "9888.HK_20261007.csv",
+    "TCOM": "TCOM_20261007.csv",
+    "9961.HK": "9961.HK_20261007.csv",
+    "HKD=X": "HKD=X_20261007.csv"
+  },
+  "rows": {
+    "BABA": 1951,
+    "9988.HK": 1688,
+    "JD": 1951,
+    "9618.HK": 1550,
+    "NTES": 1951,
+    "9999.HK": 1555,
+    "YUMC": 1951,
+    "9987.HK": 1492,
+    "BIDU": 1951,
+    "9888.HK": 1362,
+    "TCOM": 1951,
+    "9961.HK": 1346,
+    "HKD=X": 2027
+  }
+}

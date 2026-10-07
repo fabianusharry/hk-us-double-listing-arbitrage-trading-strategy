@@ -52,6 +52,15 @@ IS_END = "2023-12-31"
 OOS_START = "2024-01-01"
 OOS_END = END
 
+# Download window for the raw snapshot (wider than the backtest window).
+# - Start: 2019-01-01 predates every HK listing (Alibaba HK, Nov 2019), so the
+#   snapshot holds all HK history; pre-START rows serve only as rolling-window
+#   warm-up. The backtest itself still starts at START for every pair.
+# - End: yfinance treats `end` as EXCLUSIVE, and the HK leg executes at the HK
+#   open on day t+1, so we fetch a few sessions past END.
+DOWNLOAD_START = "2019-01-01"
+DOWNLOAD_END = "2026-10-08"
+
 # Must stay False until Session 6. Data loaders raise an error if asked for
 # any date >= OOS_START while this is False, so in-sample work cannot peek.
 ALLOW_OOS = False
@@ -109,3 +118,16 @@ BORROW_RATE_ANNUAL = 0.01  # short leg, accrued daily
 TRADING_DAYS = 252         # annualisation (Sharpe, borrow accrual)
 
 COST_MULTIPLIERS = [0.0, 0.5, 1.0, 2.0]
+
+# ---------------------------------------------------------------------------
+# Download behaviour (Session 1)
+# ---------------------------------------------------------------------------
+DOWNLOAD_RETRIES = 3        # attempts per ticker before giving up
+DOWNLOAD_BACKOFF_SEC = 5.0  # wait 5s, 10s, ... between attempts
+DOWNLOAD_PAUSE_SEC = 1.0    # polite pause between tickers
+
+
+def all_tickers() -> list[str]:
+    """Every series in the snapshot: US and HK leg of each pair, then FX."""
+    tickers = [t for us, hk, _ in PAIRS.values() for t in (us, hk)]
+    return tickers + [FX_TICKER]
