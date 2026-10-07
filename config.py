@@ -37,7 +37,8 @@ PAIRS: dict[str, tuple[str, str, int]] = {
 
 # Date-dependent ADR ratios, for any pair whose ratio changed mid-sample.
 # Format: name -> list of (effective_date, HK shares per ADR), sorted by date.
-# The ratio applies from effective_date (inclusive) until the next entry.
+# The ratio applies from effective_date (inclusive) until the next entry;
+# before the first entry the ratio in PAIRS applies.
 # Pairs not listed here use the constant ratio in PAIRS for the whole sample.
 RATIO_CHANGES: dict[str, list[tuple[str, int]]] = {}
 
