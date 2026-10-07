@@ -22,8 +22,10 @@ GRID_LOG = RESULTS_DIR / "grid_log.csv"
 # Universe
 # ---------------------------------------------------------------------------
 # name: (US ticker, HK ticker, HK shares per ADR)
-# Ratios other than Baidu's are UNVERIFIED — confirm each against SEC filings
-# (Form F-6 / 20-F) before Session 2.
+# All six ratios verified 2026-10-07 against the Deutsche Bank DR directory
+# (adr.db.com, DR details pages); YUMC confirmed separately as 1:1.
+# These are CURRENT ratios; the Session 1 split check guards against a change
+# inside the sample (which would go in RATIO_CHANGES).
 PAIRS: dict[str, tuple[str, str, int]] = {
     "Alibaba":  ("BABA", "9988.HK", 8),
     "JD":       ("JD",   "9618.HK", 2),

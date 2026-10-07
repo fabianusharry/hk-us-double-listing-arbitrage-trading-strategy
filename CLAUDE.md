@@ -71,7 +71,7 @@ OOS_START = "2024-01-01"
 ALLOW_OOS = False
 CONNECT_EVENTS = {"Alibaba": "2024-09-10", "Baidu": "2026-09-07"}
 ```
-ADR ratios except Baidu's are unverified; the student will confirm them against SEC filings. Make ratios easy to change, and support date-dependent ratios if a ratio changed mid-sample.
+ADR ratios verified 2026-10-07 (Deutsche Bank DR directory; see Progress log). Make ratios easy to change, and support date-dependent ratios if a ratio changed mid-sample.
 
 ## 6. Core definitions
 
@@ -126,4 +126,4 @@ Update this section at the end of every session (date, what was built, open issu
 
 - **2026-10-07 — Session 0 (setup).** Created folder skeleton (§4), `config.py` (§5 constants plus costs, grid, sizing, paths), docstring-only `src/` modules, `tests/conftest.py`, `.gitignore`, pinned `requirements.txt`, `.venv` on Python 3.14.6. `import config` works; `pytest` runs (0 tests).
   - Decisions: pins are the versions pip resolved together on 2026-10-07 (pandas 3.0 — note copy-on-write semantics). Date-dependent ADR ratios go in `config.RATIO_CHANGES` (empty for now). `FROZEN_PARAMS = None` until Session 5. Empty data/results/figures folders kept in git via `.gitkeep`; `data/` is not ignored.
-  - Open: ADR ratios for all pairs except Baidu still unverified against SEC filings.
+  - Open: ~~ADR ratios unverified~~ → resolved 2026-10-07: all six ratios confirmed by the student via the Deutsche Bank DR directory (adr.db.com): BABA 8, JD 2, NTES 5, BIDU 8, TCOM 1, YUMC 1. These are current ratios; Session 1's split/ratio check must confirm no change inside 2021-04-19 → 2026-09-30.
