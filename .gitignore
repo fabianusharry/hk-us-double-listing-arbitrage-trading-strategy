@@ -1,1 +1,17 @@
+# Word documents and Office lock files (pitch/spec kept outside git)
 *.docx
+~$*
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# NOTE: data/ is deliberately NOT ignored — the raw snapshot is part of the submission.

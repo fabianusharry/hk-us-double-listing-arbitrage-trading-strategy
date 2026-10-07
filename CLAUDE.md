@@ -124,4 +124,6 @@ Support a `cost_multiplier` in {0, 0.5, 1, 2} and a break-even search.
 
 Update this section at the end of every session (date, what was built, open issues, decisions taken and why).
 
-- _(empty)_
+- **2026-10-07 — Session 0 (setup).** Created folder skeleton (§4), `config.py` (§5 constants plus costs, grid, sizing, paths), docstring-only `src/` modules, `tests/conftest.py`, `.gitignore`, pinned `requirements.txt`, `.venv` on Python 3.14.6. `import config` works; `pytest` runs (0 tests).
+  - Decisions: pins are the versions pip resolved together on 2026-10-07 (pandas 3.0 — note copy-on-write semantics). Date-dependent ADR ratios go in `config.RATIO_CHANGES` (empty for now). `FROZEN_PARAMS = None` until Session 5. Empty data/results/figures folders kept in git via `.gitkeep`; `data/` is not ignored.
+  - Open: ADR ratios for all pairs except Baidu still unverified against SEC filings.
