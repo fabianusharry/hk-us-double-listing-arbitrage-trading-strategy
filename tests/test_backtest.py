@@ -45,25 +45,29 @@ def test_hand_computed_five_day_example():
     fx = pd.Series(1.0, index=pd.DatetimeIndex(DAYS))
     hk = leg_returns(raw(DAYS, [100, 100, 100, 102, 107, 98], [100, 100, 100, 108, 99, 120]), fx=fx)
     # Spread position decided at the US open: enter +1 (long US / short HK) on day 2, exit on day 4.
-    d = decisions(DAYS[1:], [0, 1, 1, 0, 0])
-    out = backtest_pair(d, us.loc[DAYS[1]:], hk.loc[DAYS[1]:])
+    out = backtest_pair(decisions(DAYS[1:], [0, 1, 1, 0, 0]), us.loc[DAYS[1]:], hk.loc[DAYS[1]:])
 
-    us_exp = [0, 0, 110 / 100 - 1, 99 / 110 - 1, 0]                  # long from close day 2 to close day 4
-    hk_exp = [0, 0, -(108 / 102 - 1), -(99 / 108 - 1), -(98 / 99 - 1)]  # short from open day 3 to open day 5
-    np.testing.assert_allclose(out["us_ret"], us_exp, atol=1e-12)
-    np.testing.assert_allclose(out["hk_ret"], hk_exp, atol=1e-12)
-    np.testing.assert_allclose(out["pair_ret"], 0.5 * np.array(us_exp) + 0.5 * np.array(hk_exp), atol=1e-12)
-    assert out["us_trade"].tolist() == [0, 1, 0, 1, 0]   # US trades at the close of days 2 and 4
-    assert out["hk_trade"].tolist() == [0, 0, 1, 0, 1]   # HK trades at the open of days 3 and 5
+    # On paper, pair equity starts at 1. Entry decided day 2: N = 0.5 x equity(end day 1) = 0.5.
+    us_sh = 0.5 / 100          # bought at the day-2 close
+    hk_sh = -0.5 / 102         # sold short at the day-3 open
+    e3 = 1 + us_sh * (110 - 100) + hk_sh * (108 - 102)       # day 3: US close-to-close, HK intraday only
+    e4 = e3 + us_sh * (99 - 110) + hk_sh * (99 - 108)        # day 4: US sold at the close, HK held all day
+    e5 = e4 + hk_sh * (98 - 99)                              # day 5: HK bought back at the open
+    np.testing.assert_allclose(out["us_pnl"], [0, 0, us_sh * 10, us_sh * -11 / e3, 0], atol=1e-12)
+    np.testing.assert_allclose(out["hk_pnl"], [0, 0, hk_sh * 6, hk_sh * -9 / e3, hk_sh * -1 / e4], atol=1e-12)
+    np.testing.assert_allclose(out["equity"], [1, 1, e3, e4, e5], atol=1e-12)
+    np.testing.assert_allclose(out["us_trade"], [0, 0.5, 0, us_sh * 99 / e3, 0], atol=1e-12)     # US trades at closes of days 2, 4
+    np.testing.assert_allclose(out["hk_trade"], [0, 0, 0.5, 0, -hk_sh * 98 / e4], atol=1e-12)   # HK at opens of days 3, 5
 
 
 def test_engine_matches_independent_dollar_ledger():
-    """Engine (returns) vs a from-scratch shares-and-dollars ledger with the same sizing rule."""
+    """Engine vs a from-scratch shares-and-dollars ledger with the same (hold-shares) sizing rule."""
     from tests.timing_example import dollar_ledger, engine_result
 
-    eng = engine_result()["pair_ret"].to_numpy()
-    ledger = dollar_ledger(sizing="rebalanced")["day_return"].to_numpy()
-    np.testing.assert_allclose(eng, ledger, atol=1e-12)
+    eng = engine_result()
+    ledger = dollar_ledger(sizing="hold")
+    np.testing.assert_allclose(eng["pair_ret"].to_numpy(), ledger["day_return"].to_numpy(), atol=1e-12)
+    np.testing.assert_allclose(eng["equity"].to_numpy(), ledger["equity"].to_numpy() / 1e6, atol=1e-12)
 
 
 def test_walkthrough_numbers_quoted_in_notes():
@@ -71,26 +75,27 @@ def test_walkthrough_numbers_quoted_in_notes():
     from tests.timing_example import dollar_ledger, engine_result
 
     eng = engine_result()
-    np.testing.assert_allclose(eng["us_ret"] * 100, [0, 0, 10.0, -10.0, 0], atol=1e-10)
-    np.testing.assert_allclose(eng["hk_ret"] * 100, [0, 0, -5.882353, 8.333333, 1.010101], atol=1e-6)
-    np.testing.assert_allclose(eng["pair_ret"] * 100, [0, 0, 2.058824, -0.833333, 0.505051], atol=1e-6)
-    assert np.isclose(eng["pair_ret"].sum() * 100, 1.730541, atol=1e-6)                   # sum: not a P&L
-    assert np.isclose(((1 + eng["pair_ret"]).prod() - 1) * 100, 1.719487, atol=1e-6)      # compounded
-    hold = dollar_ledger(sizing="hold")["equity"].iloc[-1] / 1e6 - 1
-    assert np.isclose(hold * 100, 1.460784, atol=1e-6)                                     # hold shares
+    np.testing.assert_allclose(eng["us_pnl"] * 100, [0, 0, 5.0000, -5.3890, 0], atol=5e-5)
+    np.testing.assert_allclose(eng["hk_pnl"] * 100, [0, 0, -2.9412, 4.3228, 0.4855], atol=5e-5)
+    np.testing.assert_allclose(eng["pair_ret"] * 100, [0, 0, 2.0588, -1.0663, 0.4855], atol=5e-5)
+    assert np.isclose((eng["equity"].iloc[-1] - 1) * 100, 1.460784, atol=5e-7)            # trade P&L
+    old = dollar_ledger(sizing="rebalanced")["equity"].iloc[-1] / 1e6 - 1
+    assert np.isclose(old * 100, 1.719487, atol=5e-7)                                      # old assumption
+    assert np.isclose(eng["pair_ret"].sum() * 100, 1.478025, atol=5e-7)                   # sum: not a P&L
 
 
 def test_upper_bound_variant_trades_us_at_the_open():
     us = leg_returns(raw(DAYS, [100, 100, 100, 105, 112, 99], [100, 100, 100, 110, 99, 99]))
     hk = leg_returns(raw(DAYS, 100.0, 100.0))
     out = backtest_pair(decisions(DAYS[1:], [0, 1, 1, 0, 0]), us.loc[DAYS[1]:], hk.loc[DAYS[1]:], us_exec="open")
-    # day 2: enters at the open (100 -> 100: 0); day 3 close-to-close +10%; day 4 exits at the
-    # open: old position earns the overnight 110 -> 112, new (flat) earns nothing intraday.
-    np.testing.assert_allclose(out["us_ret"], [0, 0, 0.10, 112 / 110 - 1, 0], atol=1e-12)
+    # bought at the day-2 OPEN (100); day 3: 100 -> 110; day 4 sold at the open 112 (the
+    # overnight 110 -> 112 counts, the slide to 99 does not).
+    sh = 0.5 / 100
+    np.testing.assert_allclose(out["us_pnl"], [0, 0, sh * 10, sh * 2 / (1 + sh * 10), 0], atol=1e-12)
 
 
 # ---------------------------------------------------------------------------
-# 2. Calendar cases
+# 2. Calendar cases (pair equity starts at 1, so a leg holds 0.5 / price shares)
 # ---------------------------------------------------------------------------
 def test_hk_trades_on_next_hk_session_even_if_us_closed():
     # Thanksgiving 2022-11-24: US closed, HK open. Decision Wed 23rd -> HK trades Thu 24th open.
@@ -98,8 +103,8 @@ def test_hk_trades_on_next_hk_session_even_if_us_closed():
     hk_days = ["2022-11-21", "2022-11-22", "2022-11-23", "2022-11-24", "2022-11-25"]
     us, hk = leg_returns(raw(us_days, 100.0, 100.0)), leg_returns(raw(hk_days, 100.0, 100.0))
     out = backtest_pair(decisions(us_days[1:3], [0, 1]), us.loc["2022-11-22":], hk.loc["2022-11-22":])
-    assert out.loc["2022-11-24", "hk_pos_intraday"] == -1 and out.loc["2022-11-24", "hk_trade"] == 1
-    assert out.loc["2022-11-23", "us_pos_end"] == 1
+    assert out.loc["2022-11-24", "hk_pos"] == -1 and np.isclose(out.loc["2022-11-24", "hk_trade"], 0.5)
+    assert out.loc["2022-11-23", "us_pos"] == 1
 
 
 @pytest.mark.parametrize("position,sign", [(1, +1), (-1, -1)])
@@ -110,16 +115,16 @@ def test_dividend_on_non_aligned_day_is_credited_or_debited(position, sign):
     hk = leg_returns(raw(["2022-04-01", "2022-04-04", "2022-04-06"], 100.0, 100.0))
     out = backtest_pair(decisions(["2022-04-01", "2022-04-04"], [position, position]),
                         us.loc["2022-04-01":], hk.loc["2022-04-01":])
-    # price 100 -> 99.5 plus a $1 dividend: total return +0.5% to a holder, -0.5% to a short
-    assert np.isclose(out.loc["2022-04-05", "us_ret"], sign * 0.005)
+    # 0.005 shares: price -0.5 plus $1 dividend = +0.0025 to a holder, -0.0025 to a short
+    assert np.isclose(out.loc["2022-04-05", "us_pnl"], sign * 0.0025)
     assert "2022-04-05" not in hk.index.strftime("%Y-%m-%d")  # HK closed: not an aligned day
 
 
 def test_dividend_debited_to_short_when_price_does_not_drop():
     us = leg_returns(raw(DAYS[:3], 100.0, 100.0, [0, 0, 2.0]))
     hk = leg_returns(raw(DAYS[:3], 100.0, 100.0))
-    out = backtest_pair(decisions(DAYS[:2], [-1, -1]), us, hk)  # short US
-    assert np.isclose(out.loc[DAYS[2], "us_ret"], -0.02)
+    out = backtest_pair(decisions(DAYS[:2], [-1, -1]), us, hk)  # short 0.005 US shares
+    assert np.isclose(out.loc[DAYS[2], "us_pnl"], -0.01)
 
 
 def test_half_day_hk_execution_happens_at_the_close():
@@ -127,8 +132,8 @@ def test_half_day_hk_execution_happens_at_the_close():
     hk = leg_returns(raw(DAYS[:4], [100, 100, 100, 105], [100, 100, 100, 105]))
     us = leg_returns(raw(DAYS[:4], 100.0, 100.0))
     out = backtest_pair(decisions(DAYS[1:3], [1, 0]), us.loc[DAYS[1]:], hk.loc[DAYS[1]:])
-    # the old (short) position earns the whole half-day move: -5%
-    assert np.isclose(out.loc[DAYS[3], "hk_ret"], -0.05)
+    # the old short (0.005 shares from the day-2 open) earns the whole half-day move: -0.005 x 5
+    assert np.isclose(out.loc[DAYS[3], "hk_pnl"], -0.025)
 
 
 def test_dropped_hk_bar_is_skipped_and_trade_moves_to_next_session():
@@ -139,9 +144,23 @@ def test_dropped_hk_bar_is_skipped_and_trade_moves_to_next_session():
     # decision on the 11th: short HK; would execute at the 14th open, moves to the 15th
     out = backtest_pair(decisions(days[1:2], [1]), us.loc[days[1]:], hk.loc[days[1]:])
     assert "2022-03-14" not in hk.index.strftime("%Y-%m-%d")
-    assert out.loc["2022-03-15", "hk_trade"] == 1
-    assert np.isclose(out.loc["2022-03-15", "hk_ret"], -(85 / 80 - 1))     # entered at the 15th open
-    assert np.isclose(hk.loc["2022-03-15", "r_cc"], 85 / 100 - 1)           # return spans 11th -> 15th
+    assert np.isclose(out.loc["2022-03-15", "hk_trade"], 0.5)
+    assert np.isclose(out.loc["2022-03-15", "hk_pnl"], -(0.5 / 80) * (85 - 80))   # entered at the 15th open
+    assert np.isclose(hk.loc["2022-03-15", "r_cc"], 85 / 100 - 1)                  # bar spans 11th -> 15th
+
+
+def test_both_legs_enter_with_equal_dollars_and_hold_share_counts():
+    sim = simulate_pair(400, sigma=0.01, phi=0.9, mis_sd=0.02, seed=7)
+    daily = _run(sim)["daily"]
+    e_prev = daily["equity"].shift(1).fillna(1.0)
+    us_in = daily.index[daily["us_trade"] > 0][::2]
+    hk_in = daily.index[daily["hk_trade"] > 0][::2]
+    assert len(us_in) > 5
+    np.testing.assert_allclose((daily["us_trade"] * e_prev).loc[us_in].to_numpy(),
+                               (daily["hk_trade"] * e_prev).loc[hk_in].to_numpy())
+    # between entry and exit a leg never trades again (no rebalancing)
+    held = daily["us_pos"].ne(0) & daily["us_pos"].shift(1).ne(0)
+    assert (daily.loc[held, "us_trade"] == 0).all()
 
 
 # ---------------------------------------------------------------------------

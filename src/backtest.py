@@ -5,18 +5,18 @@ Timing (CLAUDE.md §6), for a decision made at the US open on aligned day t:
   US leg (upper bound) trades at the US open on t         -> earns t's intraday part (NOT tradable; Session 6)
   HK leg               trades at the HK open of the next HK session after t
 
-Per leg and session h:
-  overnight return r_on(h) = (open_h + div_h) / close_{h-1} − 1   (dividend: the open on the ex-date is ex)
-  intraday  return r_id(h) = close_h / open_h − 1
-  close-to-close   r_cc(h) = (close_h + div_h) / close_{h-1} − 1
-  leg return(h) = pos·r_cc(h)                     if the position did not change during session h
-                = old·r_on(h) + new·r_id(h)       if it changed at the open of h
-HK prices are converted to USD with the same day's HKD=X close.
-Each leg runs on its own exchange calendar, so moves and dividends on days when
-the other market is closed are counted. P&L is never computed from spread changes.
+P&L is computed from a share-holding book (backtest_pair): each leg buys shares
+worth LEG_WEIGHT x pair equity at entry and holds that share count until exit,
+marked to market at every open and close it trades through. On the day a leg
+trades at the open, the old shares earn the overnight move (incl. dividend) and
+the new shares earn the intraday move. HK prices are converted to USD with the
+same day's HKD=X close. Each leg runs on its own exchange calendar, so moves and
+dividends on days when the other market is closed are counted. P&L is never
+computed from spread changes.
 
-Weights: pair position +1 = long spread = US weight +1, HK weight −1; each leg is
-config.LEG_WEIGHT of pair capital; each pair is config.PAIR_WEIGHT of the portfolio.
+Position: +1 = long spread = long US / short HK. Each pair is config.PAIR_WEIGHT of
+the portfolio; the portfolio return is the PAIR_WEIGHT-weighted sum of pair returns
+(cash re-allocated across pairs daily; no shares are traded for that).
 """
 
 from __future__ import annotations
@@ -76,53 +76,104 @@ def execution_sessions(decision_dates: pd.DatetimeIndex, sessions: pd.DatetimeIn
     return pd.DatetimeIndex([sessions[i] if i < len(sessions) else pd.NaT for i in pos])
 
 
-def leg_pnl(target: pd.Series, legs: pd.DataFrame, rule: str, at_open: bool) -> pd.DataFrame:
-    """Daily return of one leg for a given target position path.
-
-    Inputs:
-      target   - leg position (+1 long, −1 short, 0) after each decision, indexed by decision date
-      legs     - leg_returns() output, already restricted to the window
-      rule     - 'same' or 'next' (see execution_sessions)
-      at_open  - True: the new position is in place from the OPEN of the execution session
-                 False: from the CLOSE of the execution session (US main variant)
-    Output: index = leg sessions; pos_overnight, pos_intraday, pos_end, trade (|change| in
-    leg notional units at that session), ret (leg return per unit of leg notional).
-    """
-    exec_at = execution_sessions(target.index, legs.index, rule)
-    keep = ~exec_at.isna()
-    after_exec = pd.Series(target.to_numpy()[keep], index=exec_at[keep])
-    after_exec = after_exec[~after_exec.index.duplicated(keep="last")]
-    pos_end = after_exec.reindex(legs.index).ffill().fillna(0.0)
-    pos_overnight = pos_end.shift(1).fillna(0.0)
-    pos_intraday = pos_end if at_open else pos_overnight
-
-    changed = pos_intraday != pos_overnight
-    ret = np.where(changed,
-                   pos_overnight * legs["r_on"] + pos_intraday * legs["r_id"],
-                   pos_overnight * legs["r_cc"])
-    ret = pd.Series(ret, index=legs.index).where(pos_overnight.ne(0) | pos_intraday.ne(0), 0.0)
-    return pd.DataFrame({"pos_overnight": pos_overnight, "pos_intraday": pos_intraday, "pos_end": pos_end,
-                         "trade": (pos_end - pos_overnight).abs(), "ret": ret.fillna(0.0)})
-
-
 def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_exec: str = "close") -> pd.DataFrame:
-    """Daily pair return from a spread-position path and the two legs' returns.
+    """Hold-shares book for one pair: daily P&L from share counts and USD prices.
 
     Inputs: decisions = spread position after each decision (index: aligned decision
     dates); us, hk = leg_returns() output restricted to the window (HK already in USD);
     us_exec = 'close' (main) or 'open' (upper bound, not tradable).
-    Output: index = union of both legs' sessions; us_*, hk_* columns and pair_ret
-    (= LEG_WEIGHT·us_ret + LEG_WEIGHT·hk_ret, 0 when a market is closed).
+
+    Sizing: when a decision changes the position, each leg's target notional is
+    N = LEG_WEIGHT x pair equity at the end of the previous date. The US leg buys or
+    sells N dollars of shares at its execution price, the HK leg likewise at the next
+    HK open. Share counts then stay FIXED until the exit (no rebalancing), exactly
+    as a trader would hold them; leg values drift with prices during the trade.
+
+    Order of events on each date d (real time): HK session first (it ends 04:00 ET),
+    then the decision at the US open, then the US session.
+      HK session: overnight P&L = shares x (open − prev close + dividend) [old shares]
+                  execute any order due at this open
+                  intraday P&L  = shares x (close − open)                 [new shares]
+      US session: 'close' -> P&L = shares x (close − prev close + dividend), then execute at the close
+                  'open'  -> overnight / execute at the open / intraday, as for HK
+    One pass over the dates with O(1) work each: O(T).
+
+    Output (index = union of both legs' sessions), all money columns as a fraction of
+    pair equity at the end of the previous date:
+      us_pos, hk_pos       sign of the leg after the date (+1 long, −1 short, 0)
+      us_trade, hk_trade   traded notional (for transaction costs)
+      us_value, hk_value   signed position value at the date's close (for borrow on shorts)
+      us_pnl, hk_pnl       P&L; pair_ret = us_pnl + hk_pnl
+      equity               pair equity, starting at 1.0
     """
-    us_leg = leg_pnl(decisions, us, rule="same", at_open=(us_exec == "open"))
-    hk_leg = leg_pnl(-decisions, hk, rule="next", at_open=True)
-    out = pd.concat([us_leg.add_prefix("us_"), hk_leg.add_prefix("hk_")], axis=1, sort=True)  # dates in order
-    pos_cols = [c for c in out.columns if "pos" in c]
-    out[pos_cols] = out[pos_cols].ffill().fillna(0.0)  # a closed market keeps its position
-    out = out.fillna(0.0)                              # ...and has zero return and zero trades
-    out["pair_ret"] = config.LEG_WEIGHT * out["us_ret"] + config.LEG_WEIGHT * out["hk_ret"]
-    out.index.name = "date"
-    return out
+    dates = us.index.union(hk.index)
+    us_at = execution_sessions(decisions.index, us.index, "same")
+    hk_at = execution_sessions(decisions.index, hk.index, "next")
+
+    equity = 1.0
+    us_sh = hk_sh = 0.0
+    us_prev_close = hk_prev_close = np.nan
+    current = 0.0
+    us_orders: dict[pd.Timestamp, tuple[float, float]] = {}   # session -> (target sign, notional)
+    hk_orders: dict[pd.Timestamp, tuple[float, float]] = {}
+    decision_at = dict(zip(decisions.index, decisions.to_numpy()))
+    us_exec_of = dict(zip(decisions.index, us_at))
+    hk_exec_of = dict(zip(decisions.index, hk_at))
+    rows = []
+
+    for d in dates:
+        e_prev = equity
+        # decision at the US open of d: place orders sized from equity at the end of d-1
+        if d in decision_at and decision_at[d] != current:
+            current = decision_at[d]
+            n = config.LEG_WEIGHT * e_prev
+            if not pd.isna(us_exec_of[d]):
+                us_orders[us_exec_of[d]] = (+current, n)   # US leg = +spread position
+            if not pd.isna(hk_exec_of[d]):
+                hk_orders[hk_exec_of[d]] = (-current, n)   # HK leg = −spread position
+
+        hk_pnl = hk_trade = 0.0
+        if d in hk.index:
+            o, c, div = hk.at[d, "open"], hk.at[d, "close"], hk.at[d, "dividends"]
+            if hk_sh != 0:
+                hk_pnl += hk_sh * (o - hk_prev_close + div)
+            if d in hk_orders:
+                sign, n = hk_orders.pop(d)
+                new = sign * n / o
+                hk_trade, hk_sh = abs(new - hk_sh) * o, new
+            hk_pnl += hk_sh * (c - o)
+            hk_prev_close = c
+
+        us_pnl = us_trade = 0.0
+        if d in us.index:
+            o, c, div = us.at[d, "open"], us.at[d, "close"], us.at[d, "dividends"]
+            if us_exec == "open":
+                if us_sh != 0:
+                    us_pnl += us_sh * (o - us_prev_close + div)
+                if d in us_orders:
+                    sign, n = us_orders.pop(d)
+                    new = sign * n / o
+                    us_trade, us_sh = abs(new - us_sh) * o, new
+                us_pnl += us_sh * (c - o)
+            else:
+                if us_sh != 0:
+                    us_pnl += us_sh * (c - us_prev_close + div)
+                if d in us_orders:
+                    sign, n = us_orders.pop(d)
+                    new = sign * n / c
+                    us_trade, us_sh = abs(new - us_sh) * c, new
+            us_prev_close = c
+
+        equity = e_prev + us_pnl + hk_pnl
+        rows.append({
+            "date": d, "us_pos": np.sign(us_sh), "hk_pos": np.sign(hk_sh),
+            "us_trade": us_trade / e_prev, "hk_trade": hk_trade / e_prev,
+            "us_value": us_sh * us_prev_close / e_prev if us_sh else 0.0,
+            "hk_value": hk_sh * hk_prev_close / e_prev if hk_sh else 0.0,
+            "us_pnl": us_pnl / e_prev, "hk_pnl": hk_pnl / e_prev,
+            "pair_ret": (us_pnl + hk_pnl) / e_prev, "equity": equity,
+        })
+    return pd.DataFrame(rows).set_index("date")
 
 
 # ---------------------------------------------------------------------------

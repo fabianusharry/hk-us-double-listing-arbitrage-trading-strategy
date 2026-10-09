@@ -23,45 +23,50 @@ HK_CLOSE = [100, 100, 100, 108, 99, 120]
 DECISION = [None, 0, 1, 1, 0, 0]          # +1 = long US / short HK
 
 
-def dollar_ledger(start_equity: float = 1_000_000.0, sizing: str = "rebalanced") -> pd.DataFrame:
+def dollar_ledger(start_equity: float = 1_000_000.0, sizing: str = "hold") -> pd.DataFrame:
     """Walk the trade in dollars and shares, day by day.
 
-    US leg trades at the close of the decision day; HK leg at the open of the next day.
-    Each leg's target notional is 50% of pair equity.
-    sizing = 'rebalanced': every day each open leg is resized to 50% of the equity at the
-             previous close (what the engine assumes: constant-notional, daily, at no cost).
-    sizing = 'hold':       shares are bought once at entry (50% of equity then) and held
-             unchanged until exit (what a trader actually does).
+    Decision on day i (at the US open). The US leg trades at the close of day i; the
+    HK leg at the open of day i+1. Both legs are sized from N = 50% of the pair equity
+    at the end of day i-1.
+    sizing = 'hold':       shares bought once at entry and held unchanged until exit
+                           (what a trader does; what the engine now implements).
+    sizing = 'rebalanced': every day each open leg is reset to 50% of the equity at the
+                           previous close, at no cost (the engine's earlier assumption;
+                           kept for comparison only).
     Output: one row per day with dollar P&L per leg and end-of-day equity.
     """
     equity = start_equity
     us_shares = hk_shares = 0.0
-    us_target = hk_target = 0                     # leg positions: US = +spread, HK = -spread
+    us_target = hk_target = 0                     # leg signs: US = +spread, HK = -spread
+    pending_hk = None                             # (target sign, notional) to execute at the next HK open
     rows = []
     for i in range(1, len(DAYS)):
         prev_equity = equity
-        if sizing == "rebalanced":                # resize open legs to 50% of equity at last close
+        if sizing == "rebalanced":                # reset open legs to 50% of equity at the last close
             us_shares = us_target * 0.5 * prev_equity / US_CLOSE[i - 1]
             hk_shares = hk_target * 0.5 * prev_equity / HK_CLOSE[i - 1]
 
         # --- HK session (Asia, happens first) ---
-        hk_pnl = hk_shares * (HK_OPEN[i] - HK_CLOSE[i - 1])            # overnight, old position
-        hk_new = -DECISION[i - 1] if DECISION[i - 1] is not None else 0  # yesterday's decision executes now
-        if hk_new != hk_target:
-            hk_shares = hk_new * 0.5 * (prev_equity if sizing == "rebalanced" else equity + hk_pnl) / HK_OPEN[i]
-            hk_target = hk_new
-        hk_pnl += hk_shares * (HK_CLOSE[i] - HK_OPEN[i])               # intraday, new position
+        hk_pnl = hk_shares * (HK_OPEN[i] - HK_CLOSE[i - 1])            # overnight: old shares
+        if pending_hk is not None:                                     # yesterday's decision executes now
+            hk_target, notional = pending_hk
+            hk_shares = hk_target * notional / HK_OPEN[i]
+            pending_hk = None
+        hk_pnl += hk_shares * (HK_CLOSE[i] - HK_OPEN[i])               # intraday: new shares
 
-        # --- US session ---
+        # --- decision at the US open, then the US session ---
         us_pnl = us_shares * (US_CLOSE[i] - US_CLOSE[i - 1])           # held close-to-close
+        if DECISION[i] != us_target:
+            notional = 0.5 * prev_equity                               # sized from yesterday's close
+            us_target = DECISION[i]
+            us_shares = us_target * notional / US_CLOSE[i]             # executes at today's close
+            pending_hk = (-DECISION[i], notional)
         equity = prev_equity + hk_pnl + us_pnl
-        us_new = DECISION[i]                                           # today's decision executes at the close
-        if us_new != us_target:
-            us_shares = us_new * 0.5 * equity / US_CLOSE[i]
-            us_target = us_new
 
-        rows.append({"date": DAYS[i], "decision": DECISION[i], "us_pnl": us_pnl, "hk_pnl": hk_pnl,
-                     "equity": equity, "day_return": equity / prev_equity - 1})
+        rows.append({"date": DAYS[i], "decision": DECISION[i], "us_shares": us_shares, "hk_shares": hk_shares,
+                     "us_pnl": us_pnl, "hk_pnl": hk_pnl, "equity": equity,
+                     "day_return": equity / prev_equity - 1})
     return pd.DataFrame(rows).set_index("date")
 
 
@@ -78,25 +83,26 @@ def engine_result() -> pd.DataFrame:
 
 
 def walkthrough() -> pd.DataFrame:
-    """Per-day table in percent: engine legs, engine pair, and both ledgers."""
+    """Per-day table: engine P&L by leg (% of pair equity), engine vs ledger pair return."""
     eng = engine_result()
-    reb, hold = dollar_ledger(sizing="rebalanced"), dollar_ledger(sizing="hold")
-    t = pd.DataFrame({
-        "decision": reb["decision"].to_numpy(),
-        "US leg %": eng["us_ret"].to_numpy() * 100,
-        "HK leg %": eng["hk_ret"].to_numpy() * 100,
+    hold, reb = dollar_ledger(sizing="hold"), dollar_ledger(sizing="rebalanced")
+    return pd.DataFrame({
+        "decision": hold["decision"].to_numpy(),
+        "US P&L %": eng["us_pnl"].to_numpy() * 100,
+        "HK P&L %": eng["hk_pnl"].to_numpy() * 100,
         "pair (engine) %": eng["pair_ret"].to_numpy() * 100,
-        "pair (ledger, rebalanced) %": reb["day_return"].to_numpy() * 100,
-        "pair (ledger, hold shares) %": hold["day_return"].to_numpy() * 100,
-    }, index=reb.index)
-    return t
+        "pair (ledger, hold) %": hold["day_return"].to_numpy() * 100,
+        "pair (old rebalanced) %": reb["day_return"].to_numpy() * 100,
+        "equity (engine)": eng["equity"].to_numpy(),
+    }, index=hold.index)
 
 
 if __name__ == "__main__":
     t = walkthrough()
     pd.set_option("display.width", 200)
     print(t.round(4).to_string())
-    eng = engine_result()["pair_ret"]
-    print(f"\nSum of daily returns (NOT a P&L):        {eng.sum() * 100:+.4f}%")
-    print(f"Compounded, engine (= rebalanced ledger): {((1 + eng).prod() - 1) * 100:+.4f}%")
-    print(f"Hold-shares ledger (what a trader gets):  {(dollar_ledger(sizing='hold')['equity'].iloc[-1] / 1e6 - 1) * 100:+.4f}%")
+    eng = engine_result()
+    print(f"\nTrade P&L, engine (equity end - 1):    {(eng['equity'].iloc[-1] - 1) * 100:+.6f}%")
+    print(f"Trade P&L, hold-shares ledger:          {(dollar_ledger(sizing='hold')['equity'].iloc[-1] / 1e6 - 1) * 100:+.6f}%")
+    print(f"Old engine assumption (daily rebalance): {(dollar_ledger(sizing='rebalanced')['equity'].iloc[-1] / 1e6 - 1) * 100:+.6f}%")
+    print(f"Sum of engine daily returns (not a P&L): {eng['pair_ret'].sum() * 100:+.6f}%")
