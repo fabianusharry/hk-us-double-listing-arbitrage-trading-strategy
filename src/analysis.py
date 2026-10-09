@@ -251,3 +251,75 @@ def run_analysis(spreads: pd.DataFrame, out_dir: Path = config.RESULTS_DIR) -> d
     for name, t in tables.items():
         t.to_csv(out_dir / f"{name}.csv", index=name.startswith("change_corr"))
     return tables
+
+
+# ---------------------------------------------------------------------------
+# Stock Connect event study (pre-registered design: CLAUDE.md §6)
+# ---------------------------------------------------------------------------
+def event_windows(dates: pd.DatetimeIndex, event: str, window: int) -> tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp]:
+    """(first 'before' date, event date, last 'after' date) on one pair's aligned calendar.
+
+    'before' = the `window` aligned days strictly before the event; 'after' = the event
+    day and the following window-1 aligned days (truncated if the data ends sooner).
+    """
+    dates = pd.DatetimeIndex(sorted(dates))
+    i = dates.searchsorted(pd.Timestamp(event), side="left")
+    start = dates[max(i - window, 0)]
+    end = dates[min(i + window - 1, len(dates) - 1)]
+    return start, dates[i], end
+
+
+def segment_stats(s: pd.Series) -> dict:
+    """Mean, std, lag-1 autocorrelation and AR(1) half-life of one spread segment."""
+    s = s.dropna()
+    a = ar1(s)
+    return {"n": len(s), "mean": s.mean(), "std": s.std(), "acf_lag1": s.autocorr(lag=1),
+            "half_life_days": a["ar1_half_life_days"]}
+
+
+def connect_event_study(spreads: pd.DataFrame, treated: str, event: str, controls: list[str],
+                        window: int = config.CONNECT_WINDOW, measures=("spread", "spread_2r")) -> pd.DataFrame:
+    """Before/after statistics for the treated pair and each control over the SAME calendar windows.
+
+    The windows are defined on the treated pair's aligned days; controls use their own rows
+    within the same date ranges. Output: one row per (pair, measure) with before_*, after_*
+    and change_* (= after − before) for mean, std, acf_lag1, half_life_days.
+    """
+    t_dates = pd.DatetimeIndex(spreads.loc[spreads["pair"] == treated, "date"])
+    start, ev, end = event_windows(t_dates, event, window)
+    rows = []
+    for pair in [treated] + list(controls):
+        g = spreads[spreads["pair"] == pair].set_index("date").sort_index()
+        for m in measures:
+            before = segment_stats(g.loc[start:ev - pd.Timedelta(days=1), m])
+            after = segment_stats(g.loc[ev:end, m])
+            row = {"pair": pair, "role": "treated" if pair == treated else "control", "measure": m,
+                   "window_start": start.date(), "event": ev.date(), "window_end": end.date()}
+            for k in ("n", "mean", "std", "acf_lag1", "half_life_days"):
+                row[f"before_{k}"], row[f"after_{k}"] = before[k], after[k]
+                if k != "n":
+                    row[f"change_{k}"] = after[k] - before[k]
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def difference_vs_controls(study: pd.DataFrame, stat: str = "mean", status: dict | None = None) -> pd.DataFrame:
+    """Treated change minus the controls' average change, per measure, and the treated rank.
+
+    rank = position of the treated change among all pairs' changes (1 = largest). With one
+    treated pair and a handful of controls this is descriptive evidence, not a formal test:
+    the treated change is 'unusual' only if it lies outside the controls' range.
+    status (optional): {control: 'in'/'out'}; adds the same difference vs 'out' controls only.
+    """
+    rows = []
+    for m, g in study.groupby("measure"):
+        tr = g.loc[g["role"] == "treated", f"change_{stat}"].iloc[0]
+        ctl = g.loc[g["role"] == "control"].set_index("pair")[f"change_{stat}"]
+        row = {"measure": m, "stat": stat, "treated_change": tr, "controls_mean_change": ctl.mean(),
+               "diff_vs_controls": tr - ctl.mean(), "controls_min": ctl.min(), "controls_max": ctl.max(),
+               "treated_rank_of_n": f"{int((g[f'change_{stat}'] >= tr).sum())} of {len(g)}"}
+        if status:
+            out = ctl[[p for p in ctl.index if status.get(p) == "out"]]
+            row["diff_vs_out_controls"] = tr - out.mean()
+        rows.append(row)
+    return pd.DataFrame(rows)

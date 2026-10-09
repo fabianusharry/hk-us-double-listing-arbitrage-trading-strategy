@@ -225,3 +225,69 @@ def plot_sharpe_heatmaps(grid: pd.DataFrame, signal: str, path: Path, value: str
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return Path(path)
+
+
+def plot_equity_is_oos(curves: dict[str, tuple[pd.Series, pd.Series]], path: Path) -> Path:
+    """Cumulative net return (top) and drawdown (bottom) for IS then OOS, OOS shaded.
+
+    curves: {label: (IS daily returns, OOS daily returns)}. The OOS curve continues from the
+    IS end value (positions are flat at the boundary: the two runs are separate).
+    """
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11, 7), sharex=True, gridspec_kw={"height_ratios": [2, 1]})
+    colors = [SERIES, SERIES_2]
+    oos_start = None
+    for (label, (r_is, r_oos)), color in zip(curves.items(), colors):
+        r = pd.concat([r_is, r_oos])
+        eq = (1 + r).cumprod()
+        dd = eq / np.maximum(eq.cummax(), 1.0) - 1
+        ax1.plot(eq.index, (eq - 1) * 100, color=color, linewidth=1.4, label=label)
+        ax2.plot(dd.index, dd * 100, color=color, linewidth=1.0)
+        oos_start = r_oos.index.min()
+    for ax in (ax1, ax2):
+        ax.axvspan(oos_start, ax.get_xlim()[1] if False else r.index.max(), color=WARMUP, linewidth=0)
+        ax.axhline(0, color=MUTED, linewidth=0.8)
+        _style(ax)
+    ax1.text(oos_start, ax1.get_ylim()[1], "  out-of-sample (run once)", va="top", fontsize=8.5, color=MUTED)
+    ax1.set_ylabel("Cumulative net return (%)", fontsize=9, color=INK)
+    ax2.set_ylabel("Drawdown (%)", fontsize=9, color=INK)
+    ax2.set_xlabel("Date", fontsize=9, color=INK)
+    ax1.legend(frameon=False, fontsize=8.5, labelcolor=INK, loc="upper left")
+    fig.suptitle("Six-pair portfolio, frozen parameters (L=120, k=2.5, exit_z=0.5, H=10), costs 1x",
+                 fontsize=12, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    return Path(path)
+
+
+def plot_connect_event(spreads: pd.DataFrame, pair: str, event: str, path: Path, controls: list[str],
+                       window: int, end: str, title_note: str = "") -> Path:
+    """Spread of `pair` around its Stock Connect date (20-day rolling mean in bold), with the
+    controls' average 20-day rolling mean for comparison. Two panels: morning and two-reading."""
+    ev = pd.Timestamp(event)
+    g = spreads[spreads["pair"] == pair].set_index("date").sort_index().loc[:end]
+    i = g.index.searchsorted(ev)
+    lo, hi = g.index[max(i - window, 0)], g.index[min(i + window - 1, len(g) - 1)]
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True)
+    for ax, m in zip(axes, ["spread", "spread_2r"]):
+        s = g.loc[lo:hi, m] * 100
+        ctl = (spreads[spreads["pair"].isin(controls)].pivot(index="date", columns="pair", values=m)
+               .loc[lo:hi].mean(axis=1) * 100)
+        ax.plot(s.index, s.to_numpy(), color=SERIES, linewidth=0.6, alpha=0.45)
+        ax.plot(s.index, s.rolling(20, min_periods=5).mean(), color=SERIES, linewidth=2, label=f"{pair}, 20-day mean")
+        ax.plot(ctl.index, ctl.rolling(20, min_periods=5).mean(), color=SERIES_2, linewidth=1.6,
+                label="Comparison pairs, 20-day mean")
+        ax.axvline(ev, color=INK, linewidth=1, linestyle=(0, (4, 3)))
+        ax.axhline(0, color=MUTED, linewidth=0.8)
+        ax.set_title(MEASURE_LABELS[m], fontsize=10, color=INK, loc="left")
+        ax.set_ylabel("Spread (% of HK parity)", fontsize=9, color=INK)
+        _style(ax)
+    axes[0].text(ev, axes[0].get_ylim()[1], f"  Connect {ev.date()}", va="top", fontsize=8.5, color=INK)
+    axes[0].legend(frameon=False, fontsize=8.5, labelcolor=INK, loc="lower left")
+    axes[-1].set_xlabel("Date", fontsize=9, color=INK)
+    fig.suptitle(f"{pair}: spread around Southbound Stock Connect inclusion{title_note}",
+                 fontsize=12, color=INK, x=0.01, ha="left")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+    return Path(path)

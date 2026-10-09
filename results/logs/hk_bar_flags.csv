@@ -3,23 +3,66 @@ Alibaba,9988.HK,2020-12-24,"kept, open unreliable (early close)",228.60000610351
 Alibaba,9988.HK,2020-12-31,"kept, open unreliable (early close)",232.1999969482422
 Alibaba,9988.HK,2021-02-11,"kept, open unreliable (early close)",261.0
 Alibaba,9988.HK,2022-01-31,"kept, open unreliable (early close)",114.6999969482422
+Alibaba,9988.HK,2024-12-24,"kept, open unreliable (early close)",83.44999694824219
+Alibaba,9988.HK,2024-12-31,"kept, open unreliable (early close)",82.8499984741211
+Alibaba,9988.HK,2025-01-28,"kept, open unreliable (early close)",88.3499984741211
+Alibaba,9988.HK,2025-12-24,"kept, open unreliable (early close)",146.10000610351562
+Alibaba,9988.HK,2026-02-16,"kept, open unreliable (early close)",154.6999969482422
 JD,9618.HK,2020-12-24,"kept, open unreliable (early close)",325.3999938964844
 JD,9618.HK,2020-12-31,"kept, open unreliable (early close)",342.20001220703125
 JD,9618.HK,2021-02-11,"kept, open unreliable (early close)",386.3999938964844
 JD,9618.HK,2022-01-31,"kept, open unreliable (early close)",279.6000061035156
+JD,9618.HK,2024-01-15,dropped (close unreliable),97.9499969482422
+JD,9618.HK,2024-02-09,"kept, open unreliable (early close)",86.30000305175781
+JD,9618.HK,2024-12-24,"kept, open unreliable (early close)",141.39999389648438
+JD,9618.HK,2024-12-31,"kept, open unreliable (early close)",135.89999389648438
+JD,9618.HK,2025-01-28,"kept, open unreliable (early close)",157.0
+JD,9618.HK,2025-12-24,"kept, open unreliable (early close)",112.6999969482422
+JD,9618.HK,2025-12-31,"kept, open unreliable (early close)",111.4000015258789
+JD,9618.HK,2026-02-16,"kept, open unreliable (early close)",105.9000015258789
 NetEase,9999.HK,2020-12-24,"kept, open unreliable (early close)",141.89999389648438
 NetEase,9999.HK,2020-12-31,"kept, open unreliable (early close)",147.39999389648438
 NetEase,9999.HK,2021-02-11,"kept, open unreliable (early close)",205.3999938964844
 NetEase,9999.HK,2022-01-31,"kept, open unreliable (early close)",153.89999389648438
+NetEase,9999.HK,2024-12-24,"kept, open unreliable (early close)",142.3000030517578
+NetEase,9999.HK,2024-12-31,"kept, open unreliable (early close)",139.1999969482422
+NetEase,9999.HK,2025-01-28,"kept, open unreliable (early close)",161.0
+NetEase,9999.HK,2025-12-24,"kept, open unreliable (early close)",213.1999969482422
+NetEase,9999.HK,2025-12-31,"kept, open unreliable (early close)",215.0
+NetEase,9999.HK,2026-02-16,"kept, open unreliable (early close)",187.3000030517578
 YumChina,9987.HK,2020-12-24,"kept, open unreliable (early close)",444.6000061035156
 YumChina,9987.HK,2020-12-31,"kept, open unreliable (early close)",447.0
 YumChina,9987.HK,2021-02-11,"kept, open unreliable (early close)",473.0
 YumChina,9987.HK,2022-01-31,"kept, open unreliable (early close)",364.6000061035156
+YumChina,9987.HK,2024-01-15,dropped (close unreliable),296.3999938964844
+YumChina,9987.HK,2024-02-09,"kept, open unreliable (early close)",308.0
+YumChina,9987.HK,2024-12-24,"kept, open unreliable (early close)",380.0
+YumChina,9987.HK,2024-12-31,"kept, open unreliable (early close)",374.6000061035156
+YumChina,9987.HK,2025-01-28,"kept, open unreliable (early close)",353.0
+YumChina,9987.HK,2025-12-24,"kept, open unreliable (early close)",379.0
+YumChina,9987.HK,2025-12-31,"kept, open unreliable (early close)",368.2000122070313
+YumChina,9987.HK,2026-02-16,"kept, open unreliable (early close)",425.2000122070313
 Baidu,9888.HK,2021-12-24,"kept, open unreliable (early close)",139.10000610351562
 Baidu,9888.HK,2021-12-31,"kept, open unreliable (early close)",145.0
 Baidu,9888.HK,2022-01-31,"kept, open unreliable (early close)",144.3000030517578
 Baidu,9888.HK,2022-03-14,dropped (close unreliable),131.8000030517578
+Baidu,9888.HK,2024-01-15,dropped (close unreliable),113.5
+Baidu,9888.HK,2024-02-09,"kept, open unreliable (early close)",101.0999984741211
+Baidu,9888.HK,2024-12-24,"kept, open unreliable (early close)",85.5
+Baidu,9888.HK,2024-12-31,"kept, open unreliable (early close)",82.69999694824219
+Baidu,9888.HK,2025-01-28,"kept, open unreliable (early close)",87.69999694824219
+Baidu,9888.HK,2025-12-24,"kept, open unreliable (early close)",119.8000030517578
+Baidu,9888.HK,2025-12-31,"kept, open unreliable (early close)",131.39999389648438
+Baidu,9888.HK,2026-02-16,"kept, open unreliable (early close)",137.10000610351562
 TripCom,9961.HK,2021-12-24,"kept, open unreliable (early close)",184.3000030517578
 TripCom,9961.HK,2021-12-31,"kept, open unreliable (early close)",191.3999938964844
 TripCom,9961.HK,2022-01-31,"kept, open unreliable (early close)",200.1999969482422
 TripCom,9961.HK,2022-03-14,dropped (close unreliable),171.39999389648438
+TripCom,9961.HK,2024-01-15,dropped (close unreliable),294.79998779296875
+TripCom,9961.HK,2024-02-09,"kept, open unreliable (early close)",304.6000061035156
+TripCom,9961.HK,2024-12-24,"kept, open unreliable (early close)",561.0
+TripCom,9961.HK,2024-12-31,"kept, open unreliable (early close)",540.0
+TripCom,9961.HK,2025-01-28,"kept, open unreliable (early close)",549.0
+TripCom,9961.HK,2025-12-24,"kept, open unreliable (early close)",563.5
+TripCom,9961.HK,2025-12-31,"kept, open unreliable (early close)",554.0
+TripCom,9961.HK,2026-02-16,"kept, open unreliable (early close)",419.0

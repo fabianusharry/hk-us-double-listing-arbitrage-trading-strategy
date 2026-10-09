@@ -114,3 +114,29 @@ def test_capture_vs_cost_arithmetic():
     out = analysis.capture_vs_cost(mr, sm_).iloc[0]
     assert np.isclose(out["expected_capture"], 0.25 * 2 * 0.01)
     assert np.isclose(out["capture_minus_cost"], 0.005 - 0.0054)
+
+
+def _event_frame(shift_treated: float) -> pd.DataFrame:
+    dates = pd.bdate_range("2024-01-01", periods=300)
+    rows = []
+    for i, pair in enumerate(["T", "C1", "C2"]):
+        s = RNG.normal(0, 0.01, len(dates))
+        if pair == "T":
+            s[dates >= pd.Timestamp("2024-07-01")] += shift_treated
+        rows.append(pd.DataFrame({"date": dates, "pair": pair, "spread": s, "spread_2r": s}))
+    return pd.concat(rows, ignore_index=True)
+
+
+def test_event_windows_use_aligned_days():
+    dates = pd.bdate_range("2024-01-01", periods=50)
+    start, ev, end = analysis.event_windows(dates, "2024-01-20", 5)  # a Saturday -> next aligned day
+    assert ev == pd.Timestamp("2024-01-22") and start == dates[dates.get_loc(ev) - 5]
+    assert end == dates[dates.get_loc(ev) + 4]
+
+
+def test_connect_study_detects_a_level_shift_in_the_treated_pair_only():
+    study = analysis.connect_event_study(_event_frame(-0.02), "T", "2024-07-01", ["C1", "C2"], window=100)
+    d = analysis.difference_vs_controls(study, "mean").set_index("measure").loc["spread"]
+    assert abs(d["treated_change"] - (-0.02)) < 0.005 and abs(d["controls_mean_change"]) < 0.005
+    assert d["treated_rank_of_n"] == "3 of 3"   # most negative change -> ranked last
+    assert (study.loc[study.role == "treated", "before_n"] == 100).all()
