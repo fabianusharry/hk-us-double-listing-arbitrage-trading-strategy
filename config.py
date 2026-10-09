@@ -67,8 +67,20 @@ DOWNLOAD_END = "2026-10-08"
 ALLOW_OOS = False
 
 # Dates each HK line became eligible for Southbound Stock Connect.
-CONNECT_EVENTS: dict[str, str] = {"Alibaba": "2024-09-10", "Baidu": "2026-09-07"}
+CONNECT_EVENTS: dict[str, str] = {"Alibaba": "2024-09-10", "NetEase": "2026-06-30", "Baidu": "2026-09-07"}
 CONNECT_WINDOW = 120  # trading days before/after the event
+
+# Stock Connect analysis design (pre-registered before OOS; CLAUDE.md §6).
+CONNECT_FORMAL = "Alibaba"                    # effective date verified by the student (2024-09-10)
+CONNECT_DESCRIPTIVE = ["NetEase", "Baidu"]    # < 120 post-event days before END: plot only, no inference
+# Comparison pairs for Alibaba: Southbound status UNCHANGED across Alibaba's +/-120-day window
+# (~Mar 2024 - Mar 2025), verified by the student 2026-10-09:
+#   Baidu, JD, TripCom, NetEase - outside Connect throughout (NetEase eligible only from 2026-06-30)
+#   YumChina                    - inside Connect throughout (eligible since 2022-10-24, primary listing)
+CONNECT_CONTROLS: list[str] = ["Baidu", "JD", "TripCom", "NetEase", "YumChina"]
+CONNECT_STATUS_IN_WINDOW: dict[str, str] = {
+    "Baidu": "out", "JD": "out", "TripCom": "out", "NetEase": "out", "YumChina": "in",
+}
 
 # ---------------------------------------------------------------------------
 # Data-quality thresholds
