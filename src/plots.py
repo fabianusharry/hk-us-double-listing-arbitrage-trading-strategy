@@ -176,3 +176,52 @@ def plot_corr_heatmaps(corrs: dict[str, pd.DataFrame], path: Path) -> Path:
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return Path(path)
+
+
+def plot_sharpe_heatmaps(grid: pd.DataFrame, signal: str, path: Path, value: str = "sharpe",
+                         vlim: float | None = None, mark: dict | None = None) -> Path:
+    """Sharpe over (L, k) for each (exit_z, H) slice of the grid, one panel per slice.
+
+    Diverging colour scale centred at 0 (grey); pass the same vlim for both signals so
+    the figures are comparable. `mark` = {L, k, exit_z, H} outlines one cell (the suggestion).
+    """
+    from matplotlib.colors import LinearSegmentedColormap
+    from matplotlib.patches import Rectangle
+
+    cmap = LinearSegmentedColormap.from_list("div", ["#c4471b", "#f0efea", "#1c5cab"])  # red < 0 < blue
+    g = grid[grid["signal"] == signal]
+    Ls, ks = sorted(g["L"].unique()), sorted(g["k"].unique())
+    exits, Hs = sorted(g["exit_z"].unique()), sorted(g["H"].unique())
+    vlim = vlim or float(np.nanmax(np.abs(g[value])))
+    fig, axes = plt.subplots(len(exits), len(Hs), figsize=(9, 7.6), sharex=True, sharey=True)
+    for i, e in enumerate(exits):
+        for j, H in enumerate(Hs):
+            ax = axes[i, j]
+            m = (g[(g["exit_z"] == e) & (g["H"] == H)]
+                 .pivot(index="L", columns="k", values=value).reindex(index=Ls, columns=ks))
+            im = ax.imshow(m.to_numpy(), cmap=cmap, vmin=-vlim, vmax=vlim, aspect="auto")
+            for a in range(len(Ls)):
+                for b in range(len(ks)):
+                    ax.text(b, a, f"{m.iat[a, b]:+.2f}", ha="center", va="center", fontsize=9, color=INK)
+            if mark and mark["exit_z"] == e and mark["H"] == H:
+                ax.add_patch(Rectangle((ks.index(mark["k"]) - 0.5, Ls.index(mark["L"]) - 0.5), 1, 1,
+                                       fill=False, edgecolor=INK, linewidth=2.2))
+            ax.set_title(f"exit_z = {e:g}, H = {H} days", fontsize=9.5, color=INK, loc="left")
+            ax.set_xticks(range(len(ks)), [f"{k:g}" for k in ks], fontsize=8.5, color=INK)
+            ax.set_yticks(range(len(Ls)), [str(L) for L in Ls], fontsize=8.5, color=INK)
+            for side in ax.spines.values():
+                side.set_visible(False)
+    for ax in axes[-1, :]:
+        ax.set_xlabel("Entry threshold k (|z|)", fontsize=9, color=INK)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Window L (trading days)", fontsize=9, color=INK)
+    cb = fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.85)
+    cb.set_label("Annualised Sharpe, net of costs (1x)", fontsize=9, color=INK)
+    cb.ax.tick_params(labelsize=8, colors=MUTED, labelcolor=INK)
+    label = MEASURE_LABELS.get(signal, signal)
+    fig.suptitle(f"In-sample Sharpe grid: {label}", fontsize=12, color=INK, x=0.01, ha="left")
+    fig.text(0.01, 0.945, "Portfolio of 6 pairs, 2021-04-19 to 2023-12-29, costs at 1x. "
+             "Outlined = suggested setting.", fontsize=8.5, color=MUTED, ha="left")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return Path(path)

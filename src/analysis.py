@@ -205,12 +205,10 @@ def effective_bets(corr: pd.DataFrame) -> float:
 def round_trip_cost(pair: str) -> float:
     """Enter + exit, both legs, as a fraction of one leg's notional (config costs at 1x).
 
-    Per side: HK = stamp + levies + commission + half-spread; US = commission + half-spread.
+    Delegates to costs.round_trip_cost so the cost formula lives in one place.
     """
-    h = config.HALF_SPREAD[pair]
-    hk_side = config.HK_STAMP_DUTY + config.HK_LEVIES + config.COMMISSION + h
-    us_side = config.COMMISSION + h
-    return 2 * (hk_side + us_side)
+    from src.costs import round_trip_cost as rtc
+    return rtc(pair, 1.0)
 
 
 def capture_vs_cost(mean_rev: pd.DataFrame, summary: pd.DataFrame, entry_z: float = 2.0) -> pd.DataFrame:

@@ -231,7 +231,8 @@ def test_portfolio_is_sum_of_pair_weight_times_pair_returns(monkeypatch):
     spreads = pd.concat([a["spreads"].assign(pair="A"), b["spreads"].assign(pair="B")])
     frames = {"UA": a["us"], "1.HK": a["hk"], "UB": b["us"], "2.HK": b["hk"], config.FX_TICKER: a["fx"]}
     start = str(a["spreads"]["date"].iloc[0].date())
-    res = run_backtest(spreads, frames, Params(L=40, k=1.5, exit_z=0.0, H=10), start=start, end="1951-12-31")
+    res = run_backtest(spreads, frames, Params(L=40, k=1.5, exit_z=0.0, H=10), start=start, end="1951-12-31",
+                       cost_multiplier=0.0)
     port = res["portfolio"]
     np.testing.assert_allclose(port["portfolio_ret"], config.PAIR_WEIGHT * (port["A"] + port["B"]))
 

@@ -30,6 +30,7 @@ import pandas as pd
 
 import config
 from src import clean
+from src.costs import CostModel, cost_model
 from src.data import OOSAccessError
 from src.strategy import Params, positions, zscore
 
@@ -76,12 +77,14 @@ def execution_sessions(decision_dates: pd.DatetimeIndex, sessions: pd.DatetimeIn
     return pd.DatetimeIndex([sessions[i] if i < len(sessions) else pd.NaT for i in pos])
 
 
-def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_exec: str = "close") -> pd.DataFrame:
+def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_exec: str = "close",
+                  cost: CostModel | None = None) -> pd.DataFrame:
     """Hold-shares book for one pair: daily P&L from share counts and USD prices.
 
     Inputs: decisions = spread position after each decision (index: aligned decision
     dates); us, hk = leg_returns() output restricted to the window (HK already in USD);
-    us_exec = 'close' (main) or 'open' (upper bound, not tradable).
+    us_exec = 'close' (main) or 'open' (upper bound, not tradable);
+    cost = costs.CostModel or None (gross, no costs).
 
     Sizing: when a decision changes the position, each leg's target notional is
     N = LEG_WEIGHT x pair equity at the end of the previous date. The US leg buys or
@@ -96,6 +99,10 @@ def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_e
                   intraday P&L  = shares x (close − open)                 [new shares]
       US session: 'close' -> P&L = shares x (close − prev close + dividend), then execute at the close
                   'open'  -> overnight / execute at the open / intraday, as for HK
+    Costs (if given): every trade pays cost.trade_cost(traded dollars) at execution;
+    at the start of each date, borrow accrues on the short legs' dollar value at the
+    previous date's close for the calendar days elapsed. Costs leave pair equity at
+    once, so later trades are sized from equity after costs.
     One pass over the dates with O(1) work each: O(T).
 
     Output (index = union of both legs' sessions), all money columns as a fraction of
@@ -103,8 +110,10 @@ def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_e
       us_pos, hk_pos       sign of the leg after the date (+1 long, −1 short, 0)
       us_trade, hk_trade   traded notional (for transaction costs)
       us_value, hk_value   signed position value at the date's close (for borrow on shorts)
-      us_pnl, hk_pnl       P&L; pair_ret = us_pnl + hk_pnl
-      equity               pair equity, starting at 1.0
+      us_pnl, hk_pnl       price P&L (incl. dividends); gross_ret = us_pnl + hk_pnl
+      us_cost, hk_cost     transaction costs; borrow_cost = borrow fee
+      pair_ret             net return = gross_ret − us_cost − hk_cost − borrow_cost
+      equity               pair equity (net of costs), starting at 1.0
     """
     dates = us.index.union(hk.index)
     us_at = execution_sessions(decisions.index, us.index, "same")
@@ -120,9 +129,16 @@ def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_e
     us_exec_of = dict(zip(decisions.index, us_at))
     hk_exec_of = dict(zip(decisions.index, hk_at))
     rows = []
+    prev_date = None
 
     for d in dates:
         e_prev = equity
+        borrow = 0.0
+        if cost is not None and prev_date is not None:
+            short_value = min(us_sh * us_prev_close, 0.0) if us_sh else 0.0
+            short_value += min(hk_sh * hk_prev_close, 0.0) if hk_sh else 0.0
+            borrow = cost.borrow_cost(short_value, (d - prev_date).days)
+        prev_date = d
         # decision at the US open of d: place orders sized from equity at the end of d-1
         if d in decision_at and decision_at[d] != current:
             current = decision_at[d]
@@ -164,14 +180,18 @@ def backtest_pair(decisions: pd.Series, us: pd.DataFrame, hk: pd.DataFrame, us_e
                     us_trade, us_sh = abs(new - us_sh) * c, new
             us_prev_close = c
 
-        equity = e_prev + us_pnl + hk_pnl
+        us_cost = cost.trade_cost(us_trade, "us") if cost is not None else 0.0
+        hk_cost = cost.trade_cost(hk_trade, "hk") if cost is not None else 0.0
+        equity = e_prev + us_pnl + hk_pnl - us_cost - hk_cost - borrow
         rows.append({
             "date": d, "us_pos": np.sign(us_sh), "hk_pos": np.sign(hk_sh),
             "us_trade": us_trade / e_prev, "hk_trade": hk_trade / e_prev,
             "us_value": us_sh * us_prev_close / e_prev if us_sh else 0.0,
             "hk_value": hk_sh * hk_prev_close / e_prev if hk_sh else 0.0,
             "us_pnl": us_pnl / e_prev, "hk_pnl": hk_pnl / e_prev,
-            "pair_ret": (us_pnl + hk_pnl) / e_prev, "equity": equity,
+            "gross_ret": (us_pnl + hk_pnl) / e_prev,
+            "us_cost": us_cost / e_prev, "hk_cost": hk_cost / e_prev, "borrow_cost": borrow / e_prev,
+            "pair_ret": (equity - e_prev) / e_prev, "equity": equity,
         })
     return pd.DataFrame(rows).set_index("date")
 
@@ -190,12 +210,14 @@ def run_pair(
     end: str | None = None,
     us_exec: str = "close",
     hk_drop: pd.DatetimeIndex | None = None,
+    cost: CostModel | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Signal, positions and daily P&L for one pair over [start, end].
 
     Inputs: spreads for this pair only (columns date and `signal`, warm-up rows
     included for the rolling window); raw snapshot frames for both legs and FX.
     hk_drop: HK dates to skip as unreliable (default: clean.hk_bar_flags drop_bar).
+    cost: CostModel for this pair, or None for gross P&L.
     The window ends at the last aligned date <= end; positions are forced flat on
     the second-to-last decision day so the HK exit trades inside the window.
     Output: {'decisions', 'trades', 'daily'}.
@@ -217,7 +239,7 @@ def run_pair(
     us = leg_returns(us_raw).loc[z.index.min():window_end]
     hk = leg_returns(hk_raw, fx=fx_raw["close"], drop=hk_drop).loc[z.index.min():window_end]
 
-    daily = backtest_pair(decisions["position"].astype(float), us, hk, us_exec=us_exec)
+    daily = backtest_pair(decisions["position"].astype(float), us, hk, us_exec=us_exec, cost=cost)
     return {"decisions": decisions, "trades": trades, "daily": daily}
 
 
@@ -229,10 +251,12 @@ def run_backtest(
     start: str = config.START,
     end: str | None = None,
     us_exec: str = "close",
+    cost_multiplier: float = 1.0,
 ) -> dict:
     """All pairs and the equal-weight portfolio.
 
-    Inputs: build_spreads() output (long format) and load_raw() frames.
+    Inputs: build_spreads() output (long format) and load_raw() frames;
+    cost_multiplier scales every cost in config (0 = gross).
     Output: {'pairs': {name: run_pair output}, 'portfolio': daily DataFrame with one
     return column per pair and 'portfolio_ret' = sum of PAIR_WEIGHT * pair_ret}.
     """
@@ -241,7 +265,8 @@ def run_backtest(
     for name, (us_t, hk_t, _) in config.PAIRS.items():
         sp = spreads[spreads["pair"] == name]
         pairs[name] = run_pair(sp, frames[us_t], frames[hk_t], frames[config.FX_TICKER], p,
-                               signal=signal, start=start, end=end, us_exec=us_exec)
+                               signal=signal, start=start, end=end, us_exec=us_exec,
+                               cost=cost_model(name, cost_multiplier) if cost_multiplier else None)
     rets = pd.DataFrame({n: r["daily"]["pair_ret"] for n, r in pairs.items()}).fillna(0.0)
     rets["portfolio_ret"] = (rets[list(pairs)] * config.PAIR_WEIGHT).sum(axis=1)
     rets.index.name = "date"
@@ -254,20 +279,71 @@ def run_backtest(
 GRID_LOG_COLUMNS = [
     "timestamp_utc", "run_type", "period", "signal", "us_exec", "L", "k", "exit_z", "H", "stop_z",
     "cost_multiplier", "n_trades", "avg_days_held", "pct_days_in_market",
-    "cum_return", "sharpe", "max_drawdown", "hit_rate", "turnover", "cost_drag", "notes",
+    "cum_return", "ann_return", "ann_vol", "sharpe", "sharpe_gross", "max_drawdown",
+    "hit_rate", "turnover", "cost_drag", "elapsed_sec", "notes",
 ]
 
 
 def log_run(row: dict, path: Path = config.GRID_LOG) -> None:
-    """Append one run to results/grid_log.csv (header written on first use). Unknown keys raise."""
+    """Append one run to results/grid_log.csv. Unknown keys raise.
+
+    If the file was written with an older column set, it is first rewritten with
+    the current columns (old rows kept; new columns left blank) - rows are never dropped.
+    """
     unknown = set(row) - set(GRID_LOG_COLUMNS)
     if unknown:
         raise KeyError(f"unknown grid-log columns: {sorted(unknown)}")
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        with path.open() as f:
+            header = next(csv.reader(f), [])
+        if header != GRID_LOG_COLUMNS:
+            old = pd.read_csv(path)
+            old.reindex(columns=GRID_LOG_COLUMNS).to_csv(path, index=False)
     new = not path.exists()
     with path.open("a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=GRID_LOG_COLUMNS)
         if new:
             w.writeheader()
         w.writerow({"timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"), **row})
+
+
+def grid_params(grid: dict = config.GRID, stop_z: float = config.STOP_Z) -> list[Params]:
+    """Every combination in the grid (3 x 3 x 2 x 2 = 36), in a fixed order."""
+    from itertools import product
+    return [Params(L=L, k=k, exit_z=e, H=H, stop_z=stop_z)
+            for L, k, e, H in product(grid["L"], grid["k"], grid["exit_z"], grid["H"])]
+
+
+def run_grid(
+    spreads: pd.DataFrame,
+    frames: dict[str, pd.DataFrame],
+    signals: tuple[str, ...] = ("spread", "spread_2r"),
+    cost_multiplier: float = 1.0,
+    period: str = "IS",
+    log_path: Path = config.GRID_LOG,
+) -> tuple[pd.DataFrame, pd.DataFrame, float]:
+    """Run every grid cell for every signal, log each run, and time the whole loop.
+
+    Output: (portfolio table: one row per run, per-pair table, total seconds).
+    Every run is appended to log_path BEFORE the next one starts (CLAUDE.md rule 3).
+    """
+    import time
+    from src import metrics
+
+    rows, pair_rows = [], []
+    t_total = time.perf_counter()
+    for signal in signals:
+        for p in grid_params():
+            t0 = time.perf_counter()
+            res = run_backtest(spreads, frames, p, signal=signal, cost_multiplier=cost_multiplier)
+            summary, pairs = metrics.summarize_backtest(res)
+            elapsed = time.perf_counter() - t0
+            row = {"run_type": "grid", "period": period, "signal": signal, "us_exec": "close",
+                   **p.as_dict(), "cost_multiplier": cost_multiplier, **summary, "elapsed_sec": round(elapsed, 4)}
+            log_run(row, log_path)
+            rows.append(row)
+            pair_rows.append(pairs.assign(signal=signal, **p.as_dict()).rename_axis("pair").reset_index())
+    total = time.perf_counter() - t_total
+    return pd.DataFrame(rows), pd.concat(pair_rows, ignore_index=True), total
