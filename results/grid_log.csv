@@ -1,0 +1,3 @@
+timestamp_utc,run_type,period,signal,us_exec,L,k,exit_z,H,stop_z,cost_multiplier,n_trades,avg_days_held,pct_days_in_market,cum_return,sharpe,max_drawdown,hit_rate,turnover,cost_drag,notes
+2026-10-09T15:37:07+00:00,smoke,IS,spread,close,60,2.0,0.0,10,4.0,0,156,2.167,0.0871,,,,,,,Session 4 smoke run: engine sanity only; returns not inspected
+2026-10-09T15:37:07+00:00,smoke,IS,spread_2r,close,60,2.0,0.0,10,4.0,0,165,2.442,0.1039,,,,,,,Session 4 smoke run: engine sanity only; returns not inspected
