@@ -133,6 +133,43 @@ TRADING_DAYS = 252         # annualisation (Sharpe, borrow accrual)
 COST_MULTIPLIERS = [0.0, 0.5, 1.0, 2.0]
 
 # ---------------------------------------------------------------------------
+# Out-of-universe robustness test (pre-registered 2026-10-09; CLAUDE.md §6, Session 6b)
+# ---------------------------------------------------------------------------
+# name: (US ticker, HK ticker on Yahoo, HK shares per ADR). Ratios and the notes are
+# from memory and UNVERIFIED: the student checks each one (docs/HOLDOUT_VERIFICATION.md)
+# and flips HOLDOUT_RATIO_VERIFIED. Unverified pairs are refused by the pipeline.
+HOLDOUT_CANDIDATES: dict[str, tuple[str, str, int]] = {
+    "Bilibili":     ("BILI", "9626.HK", 1),
+    "Autohome":     ("ATHM", "2518.HK", 4),
+    "XPeng":        ("XPEV", "9868.HK", 2),
+    "LiAuto":       ("LI",   "2015.HK", 2),
+    "Hutchmed":     ("HCM",  "0013.HK", 5),
+    "Weibo":        ("WB",   "9898.HK", 1),
+    "NIO":          ("NIO",  "9866.HK", 1),
+    "KEHoldings":   ("BEKE", "2423.HK", 3),
+    "TencentMusic": ("TME",  "1698.HK", 2),
+    "ZTO":          ("ZTO",  "2057.HK", 1),
+    "HWorld":       ("HTHT", "1179.HK", 10),
+    "GDS":          ("GDS",  "9698.HK", 8),
+    "ZaiLab":       ("ZLAB", "9688.HK", 10),
+    "NewOriental":  ("EDU",  "9901.HK", 10),   # suspected ADR ratio change in sample -> likely excluded
+    "BeiGene":      ("BGNE", "6160.HK", 13),   # 2025 redomicile / ticker change (ONC) -> likely excluded
+}
+HOLDOUT_RATIO_VERIFIED: dict[str, bool] = {name: False for name in HOLDOUT_CANDIDATES}
+
+# Structural rule: HK listing must be on or before this date.
+HOLDOUT_HK_LISTED_BY = "2022-12-31"
+
+# Liquidity rule: median daily HK value traded (close x volume, HKD), in-sample days only.
+HOLDOUT_EXCLUDE_BELOW_HKD = 20e6
+HOLDOUT_SPREAD_TIERS: list[tuple[float, float]] = [  # (min median HKD value/day, half-spread), first match wins
+    (1_000e6, 0.0005),
+    (50e6,    0.0010),
+    (20e6,    0.0020),
+]
+HOLDOUT_BORROW_SENSITIVITY = 0.05  # alternative annual borrow rate reported for the holdout portfolio
+
+# ---------------------------------------------------------------------------
 # Download behaviour (Session 1)
 # ---------------------------------------------------------------------------
 DOWNLOAD_RETRIES = 3        # attempts per ticker before giving up

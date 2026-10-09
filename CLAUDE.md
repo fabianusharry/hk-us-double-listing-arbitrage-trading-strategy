@@ -121,6 +121,13 @@ Support a `cost_multiplier` in {0, 0.5, 1, 2} and a break-even search.
 
 **Mandatory placebo test (Session 4):** simulate two listings of one efficient price with **zero mispricing**, observed non-synchronously (HK earlier than US). The spread will look mean-reverting and the strategy will trade; gross P&L at execution prices must be ≈ 0. Profit here = a timing bug. P&L is always computed per leg from execution prices, never from spread changes.
 
+**Out-of-universe robustness test (pre-registered 2026-10-09, before any OOS result; Session 6b).** Same frozen parameters, code and cost table, applied to HK–US dual listings never used before. Reported as a **separate portfolio**; the six-pair OOS result remains the headline test.
+- *Candidates:* `config.HOLDOUT_CANDIDATES` (15 names). Ratios are unverified until the student confirms them (`docs/HOLDOUT_VERIFICATION.md`); the pipeline refuses to run unverified pairs.
+- *Structural exclusion:* exclude any candidate whose ADR ratio, US ticker or domicile changed between 2021-04-19 and 2026-09-30, or whose HK listing is after 2022-12-31, or which stopped being dual-listed before 2026-09-30. Evidence: the student's verification plus a data check (implied ratio US close × FX / HK close, in-sample only).
+- *Liquidity rule (measured from yfinance, in-sample days only: max(2021-04-19, HK listing) to 2023-12-29; no 2024+ data):* median daily HK value traded (close × volume, HKD) → ≥ HKD 1,000m: half-spread 0.05%; HKD 50m–1,000m: 0.10%; HKD 20m–50m: 0.20%; < HKD 20m: excluded as too thin. Thresholds chosen so that the rule reproduces the existing cost table for the original six (Yum China HKD 89m … Alibaba HKD 4,187m).
+- *Borrow:* 1% p.a. like the main test, plus a sensitivity at 5% p.a. for the out-of-universe portfolio.
+- *Every inclusion/exclusion is logged with its reason* (`results/logs/holdout_selection.csv`). Order: pre-registration committed → Session 6 main OOS run → Session 6b.
+
 ## 7. Coding conventions
 
 - Small, pure functions with type hints and a docstring stating inputs, outputs, and the timing assumption if relevant.

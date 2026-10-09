@@ -152,6 +152,18 @@ Starter prompt:
 
 ---
 
+## Session 6b — Out-of-universe robustness test (after Session 6)
+
+**Goal:** check the frozen strategy on dual listings that were never used, under the rule pre-registered in CLAUDE.md §6.
+
+Tasks:
+- Student verifies ADR ratios (`docs/HOLDOUT_VERIFICATION.md`) and sets `HOLDOUT_RATIO_VERIFIED`.
+- Download the candidates (yfinance, same settings), quality report, implied-ratio check on in-sample data.
+- Apply the structural and liquidity rules on in-sample data only; log every inclusion/exclusion to `results/logs/holdout_selection.csv`.
+- Run the frozen strategy on the survivors as a separate portfolio, IS and OOS periods, borrow 1% and 5%.
+
+Done when: selection log and holdout results table saved; nothing re-tuned.
+
 ## Session 7 — Notebook assembly (15 Oct)
 
 **Goal:** `notebook.ipynb` that runs top to bottom and tells the story.
