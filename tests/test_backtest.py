@@ -57,6 +57,29 @@ def test_hand_computed_five_day_example():
     assert out["hk_trade"].tolist() == [0, 0, 1, 0, 1]   # HK trades at the open of days 3 and 5
 
 
+def test_engine_matches_independent_dollar_ledger():
+    """Engine (returns) vs a from-scratch shares-and-dollars ledger with the same sizing rule."""
+    from tests.timing_example import dollar_ledger, engine_result
+
+    eng = engine_result()["pair_ret"].to_numpy()
+    ledger = dollar_ledger(sizing="rebalanced")["day_return"].to_numpy()
+    np.testing.assert_allclose(eng, ledger, atol=1e-12)
+
+
+def test_walkthrough_numbers_quoted_in_notes():
+    """Pins every number quoted in the Session 4 walkthrough, so the text cannot drift from the code."""
+    from tests.timing_example import dollar_ledger, engine_result
+
+    eng = engine_result()
+    np.testing.assert_allclose(eng["us_ret"] * 100, [0, 0, 10.0, -10.0, 0], atol=1e-10)
+    np.testing.assert_allclose(eng["hk_ret"] * 100, [0, 0, -5.882353, 8.333333, 1.010101], atol=1e-6)
+    np.testing.assert_allclose(eng["pair_ret"] * 100, [0, 0, 2.058824, -0.833333, 0.505051], atol=1e-6)
+    assert np.isclose(eng["pair_ret"].sum() * 100, 1.730541, atol=1e-6)                   # sum: not a P&L
+    assert np.isclose(((1 + eng["pair_ret"]).prod() - 1) * 100, 1.719487, atol=1e-6)      # compounded
+    hold = dollar_ledger(sizing="hold")["equity"].iloc[-1] / 1e6 - 1
+    assert np.isclose(hold * 100, 1.460784, atol=1e-6)                                     # hold shares
+
+
 def test_upper_bound_variant_trades_us_at_the_open():
     us = leg_returns(raw(DAYS, [100, 100, 100, 105, 112, 99], [100, 100, 100, 110, 99, 99]))
     hk = leg_returns(raw(DAYS, 100.0, 100.0))
