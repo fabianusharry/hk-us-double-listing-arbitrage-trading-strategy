@@ -64,7 +64,7 @@ DOWNLOAD_END = "2026-10-08"
 
 # Must stay False until Session 6. Data loaders raise an error if asked for
 # any date >= OOS_START while this is False, so in-sample work cannot peek.
-ALLOW_OOS = False
+ALLOW_OOS = True
 
 # Dates each HK line became eligible for Southbound Stock Connect.
 CONNECT_EVENTS: dict[str, str] = {"Alibaba": "2024-09-10", "NetEase": "2026-06-30", "Baidu": "2026-09-07"}
