@@ -89,8 +89,20 @@ GRID: dict[str, list] = {
     "H":      [5, 10],          # max holding days
 }
 
-# Frozen parameters — filled in at the end of Session 5, BEFORE OOS is run.
-FROZEN_PARAMS: dict | None = None
+# Frozen parameters — chosen 2026-10-09 at the end of Session 5, BEFORE OOS is run.
+# Do not change after this point: the OOS period is run once with these values.
+# Choice (student, from the 72-run in-sample grid at costs 1x, results/grid_plateau.csv):
+#   - Net Sharpe improves steadily towards L=120, k=2.5 in both signals and all four
+#     (exit_z, H) slices: fewer, larger-deviation trades beat a fixed cost per trade.
+#   - Within that corner, exit_z=0.5, H=10 is plateau-like for the two-reading signal
+#     (own net Sharpe 0.08 vs neighbourhood mean 0.07, best worst-neighbour +0.01);
+#     the higher H=5 cell (0.15) is a spike driven by a single JD trade.
+#   - H=10 rarely binds (average holding 1.1-2.7 days), so the result does not hinge on it.
+#   - One setting for both signals, so OOS differences come from the signal, not tuning.
+# Caveats: the setting sits at the edge of the pre-registered grid (not extended), and
+# in-sample net Sharpe (morning 0.06, two-reading 0.08) is well within one standard
+# error (~0.61 over 2.69 years) of zero.
+FROZEN_PARAMS: dict | None = {"L": 120, "k": 2.5, "exit_z": 0.5, "H": 10, "stop_z": STOP_Z}
 
 # ---------------------------------------------------------------------------
 # Sizing
