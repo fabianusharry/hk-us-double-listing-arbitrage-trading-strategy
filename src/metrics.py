@@ -108,12 +108,13 @@ def summarize_pair(res: dict) -> dict:
 def summarize_backtest(result: dict) -> tuple[dict, pd.DataFrame]:
     """(portfolio metrics, per-pair table) from a backtest.run_backtest() result.
 
-    Portfolio turnover and cost drag are the PAIR_WEIGHT-weighted pair figures; hit rate
+    Portfolio turnover and cost drag are the equally weighted pair figures; hit rate
     and holding days are pooled over all trades of all pairs.
     """
     pairs = pd.DataFrame({n: summarize_pair(r) for n, r in result["pairs"].items()}).T
+    w = 1.0 / len(result["pairs"])  # equal weight, as in run_backtest
     port = result["portfolio"]
-    gross = sum(config.PAIR_WEIGHT * r["daily"]["gross_ret"].reindex(port.index).fillna(0.0)
+    gross = sum(w * r["daily"]["gross_ret"].reindex(port.index).fillna(0.0)
                 for r in result["pairs"].values())
     all_tr = pd.concat([trade_returns(r["daily"], r["trades"]) for r in result["pairs"].values()])
     all_trades = pd.concat([r["trades"] for r in result["pairs"].values()])
@@ -122,8 +123,8 @@ def summarize_backtest(result: dict) -> tuple[dict, pd.DataFrame]:
                "hit_rate": float((all_tr > 0).mean()) if len(all_tr) else float("nan"),
                "avg_days_held": float(all_trades["days_held"].mean()) if len(all_trades) else float("nan"),
                "pct_days_in_market": float(pairs["pct_days_in_market"].mean()),
-               "turnover": float((pairs["turnover"] * config.PAIR_WEIGHT).sum()),
-               "cost_drag": float((pairs["cost_drag"] * config.PAIR_WEIGHT).sum())}
+               "turnover": float((pairs["turnover"] * w).sum()),
+               "cost_drag": float((pairs["cost_drag"] * w).sum())}
     return summary, pairs
 
 

@@ -70,11 +70,12 @@ def save_spreads(
     spreads: pd.DataFrame,
     path: Path = config.PROCESSED_DIR / "spreads.csv",
     log_dir: Path = config.LOG_DIR,
+    flags_name: str = "spread_flags.csv",
 ) -> pd.DataFrame:
-    """Write data/processed/spreads.csv and results/logs/spread_flags.csv; return the flags."""
+    """Write data/processed/spreads.csv and results/logs/<flags_name>; return the flags."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     spreads.to_csv(path, index=False)
     flags = flag_spreads(spreads)
-    flags.to_csv(Path(log_dir) / "spread_flags.csv", index=False)
+    flags.to_csv(Path(log_dir) / flags_name, index=False)
     return flags

@@ -40,13 +40,13 @@ def calendar(code: str) -> xc.ExchangeCalendar:
 # ---------------------------------------------------------------------------
 # 1. ADR ratio
 # ---------------------------------------------------------------------------
-def ratio_on(name: str, dates: pd.DatetimeIndex) -> pd.Series:
+def ratio_on(name: str, dates: pd.DatetimeIndex, pairs: dict | None = None) -> pd.Series:
     """HK shares per ADR for each date.
 
-    Uses config.PAIRS[name] as the base ratio and applies config.RATIO_CHANGES
+    Uses pairs[name] (default config.PAIRS) as the base ratio and applies config.RATIO_CHANGES
     entries from their effective date (inclusive) onwards.
     """
-    ratio = pd.Series(float(config.PAIRS[name][2]), index=dates, name="ratio")
+    ratio = pd.Series(float((pairs or config.PAIRS)[name][2]), index=dates, name="ratio")
     for effective, value in config.RATIO_CHANGES.get(name, []):
         ratio[dates >= pd.Timestamp(effective)] = float(value)
     return ratio
@@ -153,7 +153,8 @@ def fx_for_dates(fx: pd.DataFrame, dates: pd.DatetimeIndex) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # 5. Dividends
 # ---------------------------------------------------------------------------
-def match_dividends(name: str, us: pd.DataFrame, hk: pd.DataFrame, fx: pd.DataFrame) -> pd.DataFrame:
+def match_dividends(name: str, us: pd.DataFrame, hk: pd.DataFrame, fx: pd.DataFrame,
+                    pairs: dict | None = None) -> pd.DataFrame:
     """Pair each HK dividend with the corresponding US (ADR) dividend.
 
     HK amounts are HKD per share; US amounts are USD per ADR. A match needs
@@ -173,7 +174,7 @@ def match_dividends(name: str, us: pd.DataFrame, hk: pd.DataFrame, fx: pd.DataFr
 
     rows, used_us = [], set()
     for hk_ex, hk_amt in hk_div.items():
-        n = ratio_on(name, pd.DatetimeIndex([hk_ex])).iloc[0]
+        n = ratio_on(name, pd.DatetimeIndex([hk_ex]), pairs).iloc[0]
         implied_usd = n * hk_amt / fx_close.asof(hk_ex)
         candidates = [
             (abs((us_ex - hk_ex).days), us_ex) for us_ex, us_amt in us_div.items()
@@ -283,7 +284,8 @@ def previous_us_session(us: pd.DataFrame, dates: pd.DatetimeIndex) -> pd.DataFra
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
-def clean_pair(name: str, frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
+def clean_pair(name: str, frames: dict[str, pd.DataFrame],
+               pairs: dict | None = None) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
     """Run steps 1-6 for one pair.
 
     Input: pair name and snapshot frames from data.load_raw() (already behind the
@@ -294,7 +296,7 @@ def clean_pair(name: str, frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame
       div_adj_us, div_adj_hk, div_adj_us_eve, div_adj_hk_eve.
     logs: dropped, fx_fills, dividends, hk_bars.
     """
-    us_t, hk_t, _ = config.PAIRS[name]
+    us_t, hk_t, _ = (pairs or config.PAIRS)[name]
     us, hk, fx = frames[us_t], frames[hk_t], frames[config.FX_TICKER]
 
     aligned, dropped = align_pair(name, us, hk)
@@ -309,10 +311,10 @@ def clean_pair(name: str, frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame
         fxd = fxd.drop(no_fx)
 
     prev = previous_us_session(us, aligned.index)
-    events = match_dividends(name, us, hk, fx)
+    events = match_dividends(name, us, hk, fx, pairs)
     adj, div_log = dividend_adjustments(name, aligned.index, pd.DatetimeIndex(prev["us_prev_date"]), events)
 
-    cleaned = pd.concat([ratio_on(name, aligned.index), aligned, prev, fxd, adj], axis=1)
+    cleaned = pd.concat([ratio_on(name, aligned.index, pairs), aligned, prev, fxd, adj], axis=1)
     cleaned.index.name = "date"
 
     fills = fxd[fxd["fx_filled"]]
@@ -341,21 +343,25 @@ LOG_FILES = {
 }
 
 
-def clean_all(frames: dict[str, pd.DataFrame], log_dir: Path | None = config.LOG_DIR) -> pd.DataFrame:
-    """Clean every pair in config.PAIRS and write the logs.
+def clean_all(frames: dict[str, pd.DataFrame], log_dir: Path | None = config.LOG_DIR,
+              pairs: dict | None = None, log_prefix: str = "") -> pd.DataFrame:
+    """Clean every pair in `pairs` (default config.PAIRS) and write the logs.
+
+    log_prefix is prepended to every log file name (e.g. "holdout_"), so a second
+    universe never overwrites the main logs.
 
     Output: long-format DataFrame (columns: date, pair, then clean_pair's columns).
     If log_dir is None, logs are not written (used in tests).
     """
     cleaned, logs = [], {k: [] for k in LOG_FILES}
-    for name in config.PAIRS:
-        df, pair_logs = clean_pair(name, frames)
+    for name in (pairs or config.PAIRS):
+        df, pair_logs = clean_pair(name, frames, pairs)
         cleaned.append(df.reset_index().assign(pair=name))
         for k, v in pair_logs.items():
             logs[k].append(v)
     if log_dir is not None:
         Path(log_dir).mkdir(parents=True, exist_ok=True)
         for k, fname in LOG_FILES.items():
-            pd.concat(logs[k], ignore_index=True).to_csv(Path(log_dir) / fname, index=False)
+            pd.concat(logs[k], ignore_index=True).to_csv(Path(log_dir) / f"{log_prefix}{fname}", index=False)
     out = pd.concat(cleaned, ignore_index=True)
     return out[["date", "pair"] + [c for c in out.columns if c not in ("date", "pair")]]

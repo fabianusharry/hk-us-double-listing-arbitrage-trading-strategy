@@ -34,13 +34,19 @@ class CostModel:
         return abs(short_value) * self.borrow_annual * days / 365.0
 
 
-def cost_model(pair: str, multiplier: float = 1.0) -> CostModel:
-    """Build the CostModel for a pair from config, scaled by `multiplier`."""
-    half_spread = config.HALF_SPREAD[pair]
+def cost_model(pair: str, multiplier: float = 1.0, half_spread: float | None = None,
+               borrow_annual: float | None = None) -> CostModel:
+    """Build the CostModel for a pair, scaled by `multiplier`.
+
+    half_spread / borrow_annual default to config (HALF_SPREAD[pair], BORROW_RATE_ANNUAL);
+    pass them explicitly for pairs outside the main universe or for a borrow sensitivity.
+    """
+    half_spread = config.HALF_SPREAD[pair] if half_spread is None else half_spread
+    borrow = config.BORROW_RATE_ANNUAL if borrow_annual is None else borrow_annual
     us = config.COMMISSION + half_spread
     hk = config.HK_STAMP_DUTY + config.HK_LEVIES + config.COMMISSION + half_spread
     return CostModel(us_side=multiplier * us, hk_side=multiplier * hk,
-                     borrow_annual=multiplier * config.BORROW_RATE_ANNUAL)
+                     borrow_annual=multiplier * borrow)
 
 
 def round_trip_cost(pair: str, multiplier: float = 1.0) -> float:

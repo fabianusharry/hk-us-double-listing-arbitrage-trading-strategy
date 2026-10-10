@@ -252,25 +252,35 @@ def run_backtest(
     end: str | None = None,
     us_exec: str = "close",
     cost_multiplier: float = 1.0,
+    pairs: dict | None = None,
+    half_spreads: dict | None = None,
+    borrow_annual: float | None = None,
 ) -> dict:
     """All pairs and the equal-weight portfolio.
+
+    pairs: universe to run (default config.PAIRS); each pair gets 1/len(pairs) of capital.
+    half_spreads / borrow_annual: cost overrides (default config) - used for the
+    out-of-universe basket and its borrow sensitivity.
 
     Inputs: build_spreads() output (long format) and load_raw() frames;
     cost_multiplier scales every cost in config (0 = gross).
     Output: {'pairs': {name: run_pair output}, 'portfolio': daily DataFrame with one
-    return column per pair and 'portfolio_ret' = sum of PAIR_WEIGHT * pair_ret}.
+    return column per pair and 'portfolio_ret' = sum of pair_ret / len(pairs)}.
     """
     end = end or (config.END if config.ALLOW_OOS else config.IS_END)
-    pairs = {}
-    for name, (us_t, hk_t, _) in config.PAIRS.items():
+    universe = pairs or config.PAIRS
+    weight = 1.0 / len(universe)
+    results = {}
+    for name, (us_t, hk_t, _) in universe.items():
         sp = spreads[spreads["pair"] == name]
-        pairs[name] = run_pair(sp, frames[us_t], frames[hk_t], frames[config.FX_TICKER], p,
+        results[name] = run_pair(sp, frames[us_t], frames[hk_t], frames[config.FX_TICKER], p,
                                signal=signal, start=start, end=end, us_exec=us_exec,
-                               cost=cost_model(name, cost_multiplier) if cost_multiplier else None)
-    rets = pd.DataFrame({n: r["daily"]["pair_ret"] for n, r in pairs.items()}).fillna(0.0)
-    rets["portfolio_ret"] = (rets[list(pairs)] * config.PAIR_WEIGHT).sum(axis=1)
+                               cost=cost_model(name, cost_multiplier, (half_spreads or {}).get(name), borrow_annual)
+                               if cost_multiplier else None)
+    rets = pd.DataFrame({n: r["daily"]["pair_ret"] for n, r in results.items()}).fillna(0.0)
+    rets["portfolio_ret"] = (rets[list(results)] * weight).sum(axis=1)
     rets.index.name = "date"
-    return {"pairs": pairs, "portfolio": rets}
+    return {"pairs": results, "portfolio": rets}
 
 
 # ---------------------------------------------------------------------------

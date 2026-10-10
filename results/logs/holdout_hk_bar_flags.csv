@@ -1,0 +1,86 @@
+pair,hk_ticker,date,action,close
+Bilibili,9626.HK,2021-11-19,dropped (close unreliable),630.0
+Bilibili,9626.HK,2021-12-24,"kept, open unreliable (early close)",352.3999938964844
+Bilibili,9626.HK,2021-12-31,"kept, open unreliable (early close)",360.6000061035156
+Bilibili,9626.HK,2022-01-31,"kept, open unreliable (early close)",242.3999938964844
+Bilibili,9626.HK,2022-03-14,dropped (close unreliable),166.6999969482422
+Bilibili,9626.HK,2024-01-15,dropped (close unreliable),84.9000015258789
+Bilibili,9626.HK,2024-02-09,"kept, open unreliable (early close)",76.1500015258789
+Bilibili,9626.HK,2024-12-24,"kept, open unreliable (early close)",149.3000030517578
+Bilibili,9626.HK,2024-12-31,"kept, open unreliable (early close)",143.0
+Bilibili,9626.HK,2025-01-28,"kept, open unreliable (early close)",133.6999969482422
+Bilibili,9626.HK,2025-12-24,"kept, open unreliable (early close)",191.5
+Bilibili,9626.HK,2025-12-31,"kept, open unreliable (early close)",192.0
+Bilibili,9626.HK,2026-02-16,"kept, open unreliable (early close)",241.6000061035156
+XPeng,9868.HK,2021-12-24,"kept, open unreliable (early close)",175.39999389648438
+XPeng,9868.HK,2021-12-31,"kept, open unreliable (early close)",186.3999938964844
+XPeng,9868.HK,2022-01-31,"kept, open unreliable (early close)",124.5
+XPeng,9868.HK,2022-03-14,dropped (close unreliable),105.5999984741211
+XPeng,9868.HK,2024-01-15,dropped (close unreliable),47.099998474121094
+XPeng,9868.HK,2024-02-09,"kept, open unreliable (early close)",32.29999923706055
+XPeng,9868.HK,2024-12-24,"kept, open unreliable (early close)",50.04999923706055
+XPeng,9868.HK,2024-12-31,"kept, open unreliable (early close)",46.849998474121094
+XPeng,9868.HK,2025-01-28,"kept, open unreliable (early close)",58.95000076293945
+XPeng,9868.HK,2025-12-24,"kept, open unreliable (early close)",76.30000305175781
+XPeng,9868.HK,2025-12-31,"kept, open unreliable (early close)",79.05000305175781
+XPeng,9868.HK,2026-02-16,"kept, open unreliable (early close)",69.19999694824219
+LiAuto,2015.HK,2021-12-24,"kept, open unreliable (early close)",117.6999969482422
+LiAuto,2015.HK,2021-12-31,"kept, open unreliable (early close)",122.5999984741211
+LiAuto,2015.HK,2022-01-31,"kept, open unreliable (early close)",93.8499984741211
+LiAuto,2015.HK,2022-03-14,dropped (close unreliable),104.8000030517578
+LiAuto,2015.HK,2024-01-15,dropped (close unreliable),125.9000015258789
+LiAuto,2015.HK,2024-02-09,"kept, open unreliable (early close)",116.8000030517578
+LiAuto,2015.HK,2024-12-24,"kept, open unreliable (early close)",94.6999969482422
+LiAuto,2015.HK,2024-12-31,"kept, open unreliable (early close)",94.4000015258789
+LiAuto,2015.HK,2025-01-28,"kept, open unreliable (early close)",92.5
+LiAuto,2015.HK,2025-12-24,"kept, open unreliable (early close)",65.0
+LiAuto,2015.HK,2025-12-31,"kept, open unreliable (early close)",64.6500015258789
+LiAuto,2015.HK,2026-02-16,"kept, open unreliable (early close)",71.94999694824219
+Hutchmed,0013.HK,2021-12-24,"kept, open unreliable (early close)",57.0
+Hutchmed,0013.HK,2021-12-31,"kept, open unreliable (early close)",56.45000076293945
+Hutchmed,0013.HK,2022-01-31,"kept, open unreliable (early close)",40.849998474121094
+Hutchmed,0013.HK,2022-03-14,dropped (close unreliable),26.299999237060547
+Hutchmed,0013.HK,2024-01-15,dropped (close unreliable),25.5
+Hutchmed,0013.HK,2024-02-09,"kept, open unreliable (early close)",22.0
+Hutchmed,0013.HK,2024-12-24,"kept, open unreliable (early close)",22.399999618530273
+Hutchmed,0013.HK,2024-12-31,"kept, open unreliable (early close)",22.399999618530273
+Hutchmed,0013.HK,2025-01-28,"kept, open unreliable (early close)",20.899999618530273
+Hutchmed,0013.HK,2025-12-24,"kept, open unreliable (early close)",20.68000030517578
+Hutchmed,0013.HK,2025-12-31,"kept, open unreliable (early close)",20.6200008392334
+Hutchmed,0013.HK,2026-02-16,"kept, open unreliable (early close)",23.31999969482422
+NIO,9866.HK,2022-03-14,dropped (close unreliable),146.3000030517578
+NIO,9866.HK,2024-01-15,dropped (close unreliable),57.150001525878906
+NIO,9866.HK,2024-02-09,"kept, open unreliable (early close)",45.04999923706055
+NIO,9866.HK,2024-12-24,"kept, open unreliable (early close)",35.150001525878906
+NIO,9866.HK,2024-12-31,"kept, open unreliable (early close)",34.95000076293945
+NIO,9866.HK,2025-01-28,"kept, open unreliable (early close)",33.95000076293945
+NIO,9866.HK,2025-12-24,"kept, open unreliable (early close)",38.400001525878906
+NIO,9866.HK,2025-12-31,"kept, open unreliable (early close)",40.939998626708984
+NIO,9866.HK,2026-02-16,"kept, open unreliable (early close)",39.58000183105469
+ZTO,2057.HK,2020-12-24,"kept, open unreliable (early close)",215.0
+ZTO,2057.HK,2020-12-31,"kept, open unreliable (early close)",226.0
+ZTO,2057.HK,2021-02-11,"kept, open unreliable (early close)",288.0
+ZTO,2057.HK,2022-01-31,"kept, open unreliable (early close)",221.1999969482422
+ZTO,2057.HK,2024-01-15,dropped (close unreliable),148.1999969482422
+ZTO,2057.HK,2024-02-09,"kept, open unreliable (early close)",133.1999969482422
+ZTO,2057.HK,2024-12-24,"kept, open unreliable (early close)",157.1999969482422
+ZTO,2057.HK,2024-12-31,"kept, open unreliable (early close)",151.6999969482422
+ZTO,2057.HK,2025-01-28,"kept, open unreliable (early close)",151.0
+ZTO,2057.HK,2025-12-24,"kept, open unreliable (early close)",164.6999969482422
+ZTO,2057.HK,2025-12-31,"kept, open unreliable (early close)",162.1999969482422
+ZTO,2057.HK,2026-02-16,"kept, open unreliable (early close)",193.3999938964844
+GDS,9698.HK,2020-12-24,"kept, open unreliable (early close)",89.19999694824219
+GDS,9698.HK,2020-12-31,"kept, open unreliable (early close)",90.3499984741211
+GDS,9698.HK,2021-02-11,"kept, open unreliable (early close)",109.6999969482422
+GDS,9698.HK,2021-12-24,"kept, open unreliable (early close)",43.849998474121094
+GDS,9698.HK,2021-12-31,"kept, open unreliable (early close)",45.25
+GDS,9698.HK,2022-01-31,"kept, open unreliable (early close)",36.70000076293945
+GDS,9698.HK,2022-03-14,dropped (close unreliable),33.599998474121094
+GDS,9698.HK,2024-01-15,dropped (close unreliable),6.880000114440918
+GDS,9698.HK,2024-02-09,"kept, open unreliable (early close)",5.53000020980835
+GDS,9698.HK,2024-12-24,"kept, open unreliable (early close)",19.200000762939453
+GDS,9698.HK,2024-12-31,"kept, open unreliable (early close)",22.950000762939453
+GDS,9698.HK,2025-01-28,"kept, open unreliable (early close)",21.049999237060547
+GDS,9698.HK,2025-12-24,"kept, open unreliable (early close)",34.099998474121094
+GDS,9698.HK,2025-12-31,"kept, open unreliable (early close)",33.70000076293945
+GDS,9698.HK,2026-02-16,"kept, open unreliable (early close)",45.779998779296875

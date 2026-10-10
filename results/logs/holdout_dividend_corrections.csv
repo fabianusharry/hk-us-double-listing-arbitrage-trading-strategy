@@ -1,0 +1,9 @@
+pair,hk_ex,hk_amount_hkd,us_ex,us_amount_usd,status,action,days_adjusted,days_adjusted_eve
+ZTO,2021-04-01,1.9618,2021-04-07,0.25,matched,add back HK dividend (HK ex first),1,2
+ZTO,2022-04-07,1.9618,2022-04-07,0.25,matched,none (same ex-date),0,1
+ZTO,2023-04-04,2.903464,2023-04-05,0.37,matched,add back HK dividend (HK ex first),1,1
+ZTO,2024-04-09,4.865264,2024-04-09,0.62,matched,none (same ex-date),0,1
+ZTO,2024-09-09,2.74652,2024-09-10,0.35,matched,add back HK dividend (HK ex first),1,2
+ZTO,2025-04-09,2.74652,2025-04-10,0.35,matched,add back HK dividend (HK ex first),1,2
+ZTO,2025-09-29,2.35416,,,unmatched HK,none (unmatched; check manually),0,0
+ZTO,2026-04-02,3.0604079,2026-04-08,0.39,matched,add back HK dividend (HK ex first),1,2

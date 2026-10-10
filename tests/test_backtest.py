@@ -234,7 +234,24 @@ def test_portfolio_is_sum_of_pair_weight_times_pair_returns(monkeypatch):
     res = run_backtest(spreads, frames, Params(L=40, k=1.5, exit_z=0.0, H=10), start=start, end="1951-12-31",
                        cost_multiplier=0.0)
     port = res["portfolio"]
-    np.testing.assert_allclose(port["portfolio_ret"], config.PAIR_WEIGHT * (port["A"] + port["B"]))
+    np.testing.assert_allclose(port["portfolio_ret"], 0.5 * (port["A"] + port["B"]))   # 1 / len(pairs)
+    assert config.PAIR_WEIGHT == 1 / 6   # the main universe keeps its 1/6 weights
+
+
+def test_run_backtest_uses_the_universe_it_is_given():
+    """Passing pairs= must run exactly that universe (not config.PAIRS) with its own cost overrides."""
+    a, b = simulate_pair(300, phi=0.9, mis_sd=0.02, seed=5), simulate_pair(300, phi=0.9, mis_sd=0.02, seed=6)
+    universe = {"A": ("UA", "1.HK", 1), "B": ("UB", "2.HK", 1)}
+    spreads = pd.concat([a["spreads"].assign(pair="A"), b["spreads"].assign(pair="B")])
+    frames = {"UA": a["us"], "1.HK": a["hk"], "UB": b["us"], "2.HK": b["hk"], config.FX_TICKER: a["fx"]}
+    start = str(a["spreads"]["date"].iloc[0].date())
+    p = Params(L=40, k=1.5, exit_z=0.0, H=10)
+    res = run_backtest(spreads, frames, p, start=start, end="1951-12-31", pairs=universe,
+                       half_spreads={"A": 0.001, "B": 0.002}, cost_multiplier=1.0)
+    assert set(res["pairs"]) == {"A", "B"}
+    cheap = run_backtest(spreads, frames, p, start=start, end="1951-12-31", pairs=universe,
+                         half_spreads={"A": 0.0, "B": 0.0}, cost_multiplier=1.0)
+    assert cheap["portfolio"]["portfolio_ret"].sum() > res["portfolio"]["portfolio_ret"].sum()
 
 
 def test_run_pair_refuses_oos_dates_when_locked(monkeypatch):
