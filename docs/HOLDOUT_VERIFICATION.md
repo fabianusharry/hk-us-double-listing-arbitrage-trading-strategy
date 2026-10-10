@@ -23,23 +23,28 @@ differs from the ratio in `config.HOLDOUT_CANDIDATES`, correct it there. Then se
 
 ## Candidates
 
-| Name in config | US | HK (Yahoo) | Ratio in config | Claude's note (verify!) | 1 ratio | 2 change? | 3 HK listing | 4 ticker/domicile | 5 still dual-listed | Verdict |
+| Name in config | US | HK (Yahoo) | Ratio (Citi, verified) | Citi "Product Milestones" | 1 ratio | 2 change in 2021-04-19..2026-09-30? | 3 HK listing | 4 ticker/domicile | 5 still dual-listed | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Bilibili | BILI | 9626.HK | 1 | HK Mar 2021 (secondary, later primary) | | | | | | |
-| Autohome | ATHM | 2518.HK | 4 | HK Mar 2021 | | | | | | |
-| XPeng | XPEV | 9868.HK | 2 | HK Jul 2021 (dual primary); borrow may be costly | | | | | | |
-| LiAuto | LI | 2015.HK | 2 | HK Aug 2021 (dual primary); borrow may be costly | | | | | | |
-| Hutchmed | HCM | 0013.HK | 5 | HK Jun 2021; also had an AIM listing | | | | | | |
-| Weibo | WB | 9898.HK | 1 | HK Dec 2021 (secondary) | | | | | | |
-| NIO | NIO | 9866.HK | 1 | HK Mar 2022 by introduction; also listed in Singapore | | | | | | |
-| KEHoldings | BEKE | 2423.HK | 3 | HK May 2022 by introduction | | | | | | |
-| TencentMusic | TME | 1698.HK | 2 | HK Sep 2022 by introduction | | | | | | |
-| ZTO | ZTO | 2057.HK | 1 | HK Sep 2020; converted to primary later (status change only — not an exclusion) | | | | | | |
-| HWorld | HTHT | 1179.HK | 10 | HK Sep 2020; ratio may have changed around 2020 — check the date is before 2021-04-19 | | | | | | |
-| GDS | GDS | 9698.HK | 8 | HK Nov 2020 | | | | | | |
-| ZaiLab | ZLAB | 9688.HK | 10 | HK Sep 2020; unsure whether the ratio changed | | | | | | |
-| NewOriental | EDU | 9901.HK | 10 | HK Nov 2020; ratio change suspected around 2022 → likely excluded | | | | | | |
-| BeiGene | BGNE (now ONC?) | 6160.HK | 13 | 2025 redomicile / rename to BeOne, ticker ONC → likely excluded | | | | | | |
+| Bilibili | BILI | 9626.HK | 1 | New program 2018-04-02 | ✓ 1 | none listed | from data | none | active | pass → liquidity rule |
+| Autohome | ATHM | 2518.HK | 4 | Ratio 1→4 effective 2021-02-05 | ✓ 4 | before START: OK | from data | none | active | pass → liquidity rule |
+| XPeng | XPEV | 9868.HK | 2 | — | ✓ 2 | none listed | from data | none | active | pass → liquidity rule |
+| LiAuto | LI | 2015.HK | 2 | HK dual listing 2021-08-12 | ✓ 2 | none listed | 2021-08-12 | none | active | pass → liquidity rule |
+| Hutchmed | HCM | 0013.HK | **5** (Citi page showed 15 in error) | Ratio 2 DR:1 ORD → 1 DR:5 ORD on 2019-05-30 (before START); name change 2021-05-14. Depositary: **Deutsche Bank** | ✓ 5 — company FAQ: *"each ADR represents five ordinary shares"* (hutch-med.com/shareholder-information/investor-faqs, checked 2026-10-10) | none in sample: market-implied 4.9–5.1 every quarter 2021–2026; no Yahoo split | 2021-06-30 | name change only | active | pass → liquidity rule |
+| Weibo | WB | 9898.HK | 1 | — | ✓ 1 | none listed | from data | none | active | pass → liquidity rule |
+| NIO | NIO | 9866.HK | 1 | New program 2018-09-14 | ✓ 1 | none listed | from data | none | active | pass → liquidity rule |
+| KEHoldings | BEKE | 2423.HK | 3 | — | ✓ 3 | none listed | from data | none | active | pass → liquidity rule |
+| TencentMusic | TME | 1698.HK | 2 | New program 2018-12-14 | ✓ 2 | none listed | from data | none | active | pass → liquidity rule |
+| ZTO | ZTO | 2057.HK | 1 | — | ✓ 1 | none listed | from data | none | active | pass → liquidity rule |
+| HWorld | HTHT | 1179.HK | 10 | Ratio 1→10 effective **2021-06-29** | ✓ 10 | **yes** | — | — | active | **exclude (ratio change in sample)** |
+| GDS | GDS | 9698.HK | 8 | HK secondary listing 2020-11-02 | ✓ 8 | none listed | 2020-11-02 | none | active | pass → liquidity rule |
+| ZaiLab | ZLAB | 9688.HK | 10 | Ratio change effective **2022-03-30** (old 1:1); ORD ISIN changed twice | ✓ 10 | **yes** | — | — | active | **exclude (ratio change in sample)** |
+| NewOriental | EDU | 9901.HK | Citi says 4; **market-implied 10** | none listed. Depositary: **DB** | ⚠ conflict | **yes**: Yahoo split records 2022-04-07/08 (ADR ratio → 1:10); 10-for-1 share split 2021-03 | 2020-11-09 | none | active | **exclude (ratio change in sample)** |
+| BeiGene | ONC (was BGNE) | 6160.HK | 13 | Ticker BGNE→ONC **2025-01-02**; country Switzerland | ✓ 13 | — | — | **yes** | active | **exclude (ticker + domicile change)** |
+
+Source for every row: Citi DR programme details (`depositaryreceipts.citi.com/adr/guides/pgm_d.aspx?...&cusip=<CUSIP>`),
+saved in `results/logs/holdout_citi_programs.csv` (fetched 2026-10-10). Ratios first read by the student on the
+Citi DR pages; Claude matched all 15 against the same source. "from data" = the first HK trading date comes
+from the yfinance snapshot in Session 6b. "Active" = Citi shows no inactive date.
 
 ## After you finish
 

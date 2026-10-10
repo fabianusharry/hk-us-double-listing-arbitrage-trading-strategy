@@ -155,19 +155,32 @@ HOLDOUT_CANDIDATES: dict[str, tuple[str, str, int]] = {
     "Autohome":     ("ATHM", "2518.HK", 4),
     "XPeng":        ("XPEV", "9868.HK", 2),
     "LiAuto":       ("LI",   "2015.HK", 2),
-    "Hutchmed":     ("HCM",  "0013.HK", 5),
+    "Hutchmed":     ("HCM",  "0013.HK", 5),    # company FAQ: "each ADR represents five ordinary shares"; Citi's 15:1 is wrong
     "Weibo":        ("WB",   "9898.HK", 1),
     "NIO":          ("NIO",  "9866.HK", 1),
     "KEHoldings":   ("BEKE", "2423.HK", 3),
     "TencentMusic": ("TME",  "1698.HK", 2),
     "ZTO":          ("ZTO",  "2057.HK", 1),
-    "HWorld":       ("HTHT", "1179.HK", 10),
+    "HWorld":       ("HTHT", "1179.HK", 10),   # ratio 1->10 on 2021-06-29 -> excluded (structural)
     "GDS":          ("GDS",  "9698.HK", 8),
-    "ZaiLab":       ("ZLAB", "9688.HK", 10),
-    "NewOriental":  ("EDU",  "9901.HK", 10),   # suspected ADR ratio change in sample -> likely excluded
-    "BeiGene":      ("BGNE", "6160.HK", 13),   # 2025 redomicile / ticker change (ONC) -> likely excluded
+    "ZaiLab":       ("ZLAB", "9688.HK", 10),   # ratio 1->10 on 2022-03-30 -> excluded (structural)
+    "NewOriental":  ("EDU",  "9901.HK", 4),    # Citi 4:1, no milestones listed -> data check
+    "BeiGene":      ("ONC",  "6160.HK", 13),   # ticker BGNE->ONC 2025-01-02, now Swiss -> excluded (structural)
 }
-HOLDOUT_RATIO_VERIFIED: dict[str, bool] = {name: False for name in HOLDOUT_CANDIDATES}
+# Current ratios verified 2026-10-10 by the student (Citi DR directory) and matched by Claude
+# against Citi's programme-details pages (results/logs/holdout_citi_programs.csv).
+HOLDOUT_RATIO_VERIFIED: dict[str, bool] = {name: True for name in HOLDOUT_CANDIDATES}
+# Structural verdicts from Citi "Product Milestones" (pre-registered rule: no ratio / ticker /
+# domicile change between 2021-04-19 and 2026-09-30). "pending" = decided by the price-data check.
+HOLDOUT_STRUCTURAL: dict[str, str] = {
+    "Bilibili": "pass", "Autohome": "pass (ratio change 2021-02-05, before START)", "XPeng": "pass",
+    "LiAuto": "pass", "Hutchmed": "pass (ratio 5 per company investor FAQ, depositary Deutsche Bank; Citi third-party page showed 15 in error; last ratio change 2019-05-30, before START; market-implied 4.9-5.1 every quarter 2021-2026)",
+    "Weibo": "pass", "NIO": "pass", "KEHoldings": "pass", "TencentMusic": "pass", "ZTO": "pass",
+    "HWorld": "exclude: ratio change 1->10 effective 2021-06-29",
+    "GDS": "pass", "ZaiLab": "exclude: ratio change 1->10 effective 2022-03-30",
+    "NewOriental": "exclude: ADR ratio change 1->10 in Apr 2022 (Yahoo split records 2022-04-07/08) inside the sample; Citi's 4:1 contradicts market-implied 10",
+    "BeiGene": "exclude: ticker BGNE->ONC 2025-01-02 and redomicile to Switzerland",
+}
 
 # Structural rule: HK listing must be on or before this date.
 HOLDOUT_HK_LISTED_BY = "2022-12-31"
