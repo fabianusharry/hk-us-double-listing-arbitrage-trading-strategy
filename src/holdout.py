@@ -100,3 +100,19 @@ def select(frames: dict[str, pd.DataFrame], fx_close: pd.Series) -> pd.DataFrame
                      "structural_citi": structural, "decision": "include" if not reasons else "exclude",
                      "reasons": "; ".join(reasons)})
     return pd.DataFrame(rows)
+
+
+def universe(selection_path=None) -> tuple[dict, dict]:
+    """(pairs, half_spreads) of the INCLUDED out-of-universe pairs, read from the selection log."""
+    sel = pd.read_csv(selection_path or config.LOG_DIR / "holdout_selection.csv")
+    inc = sel[sel["decision"] == "include"]
+    pairs = {r["name"]: (r["us"], r["hk"], int(r["ratio"])) for _, r in inc.iterrows()}
+    return pairs, {r["name"]: float(r["half_spread"]) for _, r in inc.iterrows()}
+
+
+def load_frames(pairs: dict) -> dict[str, pd.DataFrame]:
+    """Snapshot frames for the given holdout pairs plus the main FX series (offline)."""
+    from src.data import load_raw
+    frames = load_raw([t for us, hk, _ in pairs.values() for t in (us, hk)], raw_dir=config.RAW_DIR / "holdout")
+    frames[config.FX_TICKER] = load_raw([config.FX_TICKER])[config.FX_TICKER]
+    return frames

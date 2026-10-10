@@ -158,3 +158,25 @@ def plateau_scores(grid: pd.DataFrame, value: str = "sharpe", dims=("L", "k", "e
         mins.append(np.nanmin(vals))
         counts.append(len(vals) - 1)
     return grid.assign(nbhd_mean=means, nbhd_min=mins, n_nbrs=counts)
+
+
+def trade_table(result: dict) -> pd.DataFrame:
+    """Every round trip of a run_backtest() result with its net return and its contribution
+    to the portfolio (= trade return x pair weight), largest contribution first."""
+    w = 1.0 / len(result["pairs"])
+    rows = []
+    for name, r in result["pairs"].items():
+        tr = trade_returns(r["daily"], r["trades"])
+        for (_, t), ret in zip(r["trades"].iterrows(), tr.to_numpy()):
+            rows.append({"pair": name, "entry": t.entry_date.date(), "direction": int(t.direction),
+                         "days_held": int(t.days_held), "exit_reason": t.exit_reason,
+                         "trade_return": ret, "contribution": ret * w})
+    return pd.DataFrame(rows).sort_values("contribution", ascending=False).reset_index(drop=True)
+
+
+def concentration(trades: pd.DataFrame, top: int = 3) -> dict:
+    """How much of the total profit the `top` best trades provide, and what is left without them."""
+    total = trades["contribution"].sum()
+    best = trades["contribution"].head(top).sum()
+    return {"n_trades": len(trades), "total_contribution": total, f"top{top}_share": best / total if total else float("nan"),
+            f"total_without_top{top}": total - best, "median_trade_return": trades["trade_return"].median()}

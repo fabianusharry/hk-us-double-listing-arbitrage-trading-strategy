@@ -357,3 +357,26 @@ def run_grid(
             pair_rows.append(pairs.assign(signal=signal, **p.as_dict()).rename_axis("pair").reset_index())
     total = time.perf_counter() - t_total
     return pd.DataFrame(rows), pd.concat(pair_rows, ignore_index=True), total
+
+
+def break_even_multiplier(spreads: pd.DataFrame, frames: dict[str, pd.DataFrame], p: Params,
+                          lo: float = 0.0, hi: float = 8.0, iters: int = 14, **kwargs) -> float:
+    """Cost multiplier at which the portfolio's net Sharpe crosses zero (bisection).
+
+    Sharpe falls as costs rise, so bisection on [lo, hi] works. Returns 0.0 if the strategy
+    already loses before costs, inf if it still wins at `hi`. kwargs go to run_backtest
+    (signal, start, end, pairs, ...). Precision after 14 halvings of [0, 8]: ~0.0005.
+    """
+    from src.metrics import sharpe
+
+    def sr(m: float) -> float:
+        return sharpe(run_backtest(spreads, frames, p, cost_multiplier=m, **kwargs)["portfolio"]["portfolio_ret"])
+
+    if sr(lo) <= 0:
+        return 0.0
+    if sr(hi) > 0:
+        return float("inf")
+    for _ in range(iters):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if sr(mid) > 0 else (lo, mid)
+    return (lo + hi) / 2

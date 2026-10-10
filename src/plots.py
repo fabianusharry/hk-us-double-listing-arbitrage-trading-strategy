@@ -227,7 +227,8 @@ def plot_sharpe_heatmaps(grid: pd.DataFrame, signal: str, path: Path, value: str
     return Path(path)
 
 
-def plot_equity_is_oos(curves: dict[str, tuple[pd.Series, pd.Series]], path: Path) -> Path:
+def plot_equity_is_oos(curves: dict[str, tuple[pd.Series, pd.Series]], path: Path,
+                       title: str = "Six-pair portfolio, frozen parameters (L=120, k=2.5, exit_z=0.5, H=10), costs 1x") -> Path:
     """Cumulative net return (top) and drawdown (bottom) for IS then OOS, OOS shaded.
 
     curves: {label: (IS daily returns, OOS daily returns)}. The OOS curve continues from the
@@ -244,7 +245,7 @@ def plot_equity_is_oos(curves: dict[str, tuple[pd.Series, pd.Series]], path: Pat
         ax2.plot(dd.index, dd * 100, color=color, linewidth=1.0)
         oos_start = r_oos.index.min()
     for ax in (ax1, ax2):
-        ax.axvspan(oos_start, ax.get_xlim()[1] if False else r.index.max(), color=WARMUP, linewidth=0)
+        ax.axvspan(oos_start, r.index.max(), color=WARMUP, linewidth=0)
         ax.axhline(0, color=MUTED, linewidth=0.8)
         _style(ax)
     ax1.text(oos_start, ax1.get_ylim()[1], "  out-of-sample (run once)", va="top", fontsize=8.5, color=MUTED)
@@ -252,8 +253,7 @@ def plot_equity_is_oos(curves: dict[str, tuple[pd.Series, pd.Series]], path: Pat
     ax2.set_ylabel("Drawdown (%)", fontsize=9, color=INK)
     ax2.set_xlabel("Date", fontsize=9, color=INK)
     ax1.legend(frameon=False, fontsize=8.5, labelcolor=INK, loc="upper left")
-    fig.suptitle("Six-pair portfolio, frozen parameters (L=120, k=2.5, exit_z=0.5, H=10), costs 1x",
-                 fontsize=12, color=INK, x=0.01, ha="left")
+    fig.suptitle(title, fontsize=12, color=INK, x=0.01, ha="left")
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     fig.savefig(path, dpi=150)
     plt.close(fig)

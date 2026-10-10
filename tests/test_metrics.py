@@ -73,3 +73,10 @@ def test_plateau_score_prefers_plateau_over_isolated_peak():
     spike = scored[(scored.L == 20) & (scored.k == 1.5) & (scored.exit_z == 0.0) & (scored.H == 5)].iloc[0]
     assert spike["sharpe"] == scored["sharpe"].max() and spike["nbhd_mean"] < best["nbhd_mean"]
     assert scored["n_nbrs"].between(3, 6).all()
+
+
+def test_concentration_by_hand():
+    t = pd.DataFrame({"contribution": [0.03, 0.01, 0.005, -0.005, -0.01], "trade_return": [0.18, 0.06, 0.03, -0.03, -0.06]})
+    c = metrics.concentration(t, top=2)
+    assert np.isclose(c["total_contribution"], 0.03) and np.isclose(c["top2_share"], 0.04 / 0.03)
+    assert np.isclose(c["total_without_top2"], -0.01) and np.isclose(c["median_trade_return"], 0.03)

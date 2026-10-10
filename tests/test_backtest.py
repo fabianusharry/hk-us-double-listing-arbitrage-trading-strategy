@@ -268,3 +268,17 @@ def test_log_run_appends_rows_and_rejects_unknown_columns(tmp_path):
     assert pd.read_csv(path)["L"].tolist() == [20, 60]
     with pytest.raises(KeyError):
         backtest.log_run({"bogus": 1}, path)
+
+
+def test_break_even_multiplier_brackets_zero_sharpe():
+    a = simulate_pair(600, sigma=0.003, phi=0.93, mis_sd=0.02, seed=3)
+    universe = {"A": ("UA", "1.HK", 1)}
+    spreads = a["spreads"].assign(pair="A")
+    frames = {"UA": a["us"], "1.HK": a["hk"], config.FX_TICKER: a["fx"]}
+    kw = dict(start=str(a["spreads"]["date"].iloc[0].date()), end="1952-12-31", pairs=universe,
+              half_spreads={"A": 0.001})
+    p = Params(L=40, k=1.5, exit_z=0.0, H=10)
+    be = backtest.break_even_multiplier(spreads, frames, p, **kw)
+    from src.metrics import sharpe
+    s = lambda m: sharpe(run_backtest(spreads, frames, p, cost_multiplier=m, **kw)["portfolio"]["portfolio_ret"])
+    assert 0 < be < 8 and s(be * 0.9) > 0 > s(be * 1.1)
