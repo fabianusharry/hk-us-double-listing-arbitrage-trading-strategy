@@ -28,11 +28,7 @@ MEASURES = ["spread", "spread_2r"]
 
 
 def in_sample(spreads: pd.DataFrame) -> pd.DataFrame:
-    """Rows inside the backtest's in-sample window [config.START, config.IS_END].
-
-    Raises OOSAccessError if the input contains OOS rows while ALLOW_OOS is False
-    (defence in depth: load_raw() should already have stopped them).
-    """
+    # Checking function if the date is In-Sample
     if not config.ALLOW_OOS and (spreads["date"] >= pd.Timestamp(config.OOS_START)).any():
         raise OOSAccessError("analysis input contains out-of-sample rows while ALLOW_OOS is False")
     mask = (spreads["date"] >= pd.Timestamp(config.START)) & (spreads["date"] <= pd.Timestamp(config.IS_END))
@@ -246,6 +242,8 @@ def run_analysis(spreads: pd.DataFrame, out_dir: Path = config.RESULTS_DIR) -> d
     }
     for m in MEASURES:
         tables[f"change_corr_{m}"] = change_correlations(df, m)
+
+    # Output
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for name, t in tables.items():

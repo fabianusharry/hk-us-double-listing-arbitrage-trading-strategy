@@ -10,7 +10,7 @@ from src import backtest
 from src.backtest import backtest_pair, leg_returns, run_backtest, run_pair
 from src.data import COLUMNS
 from src.strategy import Params
-from tests.synthetic import simulate_pair
+from src.synthetic import simulate_pair
 
 
 def raw(dates, open_, close, dividends=0.0) -> pd.DataFrame:
@@ -62,7 +62,7 @@ def test_hand_computed_five_day_example():
 
 def test_engine_matches_independent_dollar_ledger():
     """Engine vs a from-scratch shares-and-dollars ledger with the same (hold-shares) sizing rule."""
-    from tests.timing_example import dollar_ledger, engine_result
+    from src.timing_example import dollar_ledger, engine_result
 
     eng = engine_result()
     ledger = dollar_ledger(sizing="hold")
@@ -72,7 +72,7 @@ def test_engine_matches_independent_dollar_ledger():
 
 def test_walkthrough_numbers_quoted_in_notes():
     """Pins every number quoted in the Session 4 walkthrough, so the text cannot drift from the code."""
-    from tests.timing_example import dollar_ledger, engine_result
+    from src.timing_example import dollar_ledger, engine_result
 
     eng = engine_result()
     np.testing.assert_allclose(eng["us_pnl"] * 100, [0, 0, 5.0000, -5.3890, 0], atol=5e-5)

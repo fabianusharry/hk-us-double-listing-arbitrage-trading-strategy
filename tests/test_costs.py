@@ -6,7 +6,7 @@ import pytest
 
 from src import costs
 from src.backtest import backtest_pair, leg_returns
-from tests.synthetic import _frame
+from src.synthetic import _frame
 
 # Fri 22 Apr .. Fri 29 Apr 2022 (no holidays)
 DAYS = ["2022-04-22", "2022-04-25", "2022-04-26", "2022-04-27", "2022-04-28", "2022-04-29"]

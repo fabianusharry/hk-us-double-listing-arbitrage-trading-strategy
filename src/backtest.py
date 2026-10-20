@@ -39,14 +39,6 @@ from src.strategy import Params, positions, zscore
 # Leg returns
 # ---------------------------------------------------------------------------
 def leg_returns(raw: pd.DataFrame, fx: pd.Series | None = None, drop: pd.DatetimeIndex | None = None) -> pd.DataFrame:
-    """Per-session open, close, dividend and returns for one leg, in USD.
-
-    Inputs: snapshot frame (open, close, dividends); optional FX close series
-    (local currency per USD, forward-filled onto the leg's sessions); optional
-    dates to remove (unreliable bars) - the next session's returns then span the gap.
-    Output: index `date`; open, close, dividends (USD), r_on, r_id, r_cc.
-    The first session has NaN returns (no previous close).
-    """
     df = raw[["open", "close", "dividends"]].copy()
     if drop is not None and len(drop):
         df = df.drop(df.index.intersection(drop))

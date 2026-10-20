@@ -3,12 +3,12 @@
 1. The engine (src/backtest.py), which works in returns.
 2. A dollar ledger written here from scratch: it holds share counts, executes
    trades at the stated prices and marks the book to market at every open and
-   close. It uses no code or formulas from src/.
+   close. It uses no code or formulas from the engine.
 
 tests/test_backtest.py asserts the two agree. Run this file to print the
 walkthrough table, so every number quoted in the notes comes from code:
 
-    .venv/bin/python -m tests.timing_example
+    .venv/bin/python -m src.timing_example
 """
 
 import pandas as pd
@@ -70,10 +70,10 @@ def dollar_ledger(start_equity: float = 1_000_000.0, sizing: str = "hold") -> pd
     return pd.DataFrame(rows).set_index("date")
 
 
-def engine_result() -> pd.DataFrame:
+def xengine_result() -> pd.DataFrame:
     """The same example run through the engine."""
     from src.backtest import backtest_pair, leg_returns
-    from tests.synthetic import _frame
+    from src.synthetic import _frame
 
     fx = pd.Series(1.0, index=pd.DatetimeIndex(DAYS))
     us = leg_returns(_frame(DAYS, US_OPEN, US_CLOSE))
