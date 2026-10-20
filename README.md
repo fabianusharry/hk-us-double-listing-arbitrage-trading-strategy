@@ -3,7 +3,6 @@
 Capstone (Data Structures and Algorithms, Imperial College Business School):
 does the price gap between six Chinese companies' New York ADRs and Hong Kong
 shares mean-revert profitably after realistic costs, out-of-sample?
-See `CLAUDE.md` for the full specification.
 
 ## Setup
 

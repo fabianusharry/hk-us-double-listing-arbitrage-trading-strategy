@@ -1,4 +1,4 @@
-"""Out-of-universe candidate selection (pre-registered rule: CLAUDE.md §6, Session 6b).
+"""Out-of-universe candidate selection.
 
 Three data checks on the yfinance snapshot in data/raw/holdout/:
   1. Liquidity  - median daily HK value traded (close x volume, HKD) on IN-SAMPLE days
@@ -95,10 +95,20 @@ def select(frames: dict[str, pd.DataFrame], fx_close: pd.Series) -> pd.DataFrame
         if tier is None:
             reasons.append(f"too thin: median HK value HKD {med / 1e6:.1f}m < {config.HOLDOUT_EXCLUDE_BELOW_HKD / 1e6:.0f}m")
 
-        rows.append({"name": name, "us": us_t, "hk": hk_t, "ratio": ratio, "first_hk_date": first_hk.date(),
-                     "median_hk_value_hkd_m": med / 1e6, "half_spread": tier, **rc, "us_splits_in_sample": splits,
-                     "structural_citi": structural, "decision": "include" if not reasons else "exclude",
-                     "reasons": "; ".join(reasons)})
+        rows.append({
+            "name": name, 
+            "us": us_t, 
+            "hk": hk_t, 
+            "ratio": ratio, 
+            "first_hk_date": first_hk.date(),
+            "median_hk_value_hkd_m": med / 1e6, 
+            "half_spread": tier, **rc, 
+            "us_splits_in_sample": splits,
+            "structural_citi": structural, 
+            "decision": "include" if not reasons else "exclude", 
+            "reasons": "; ".join(reasons)
+        })
+
     return pd.DataFrame(rows)
 
 

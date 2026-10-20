@@ -3,7 +3,6 @@ turnover, cost drag; plus the plateau score used to choose grid parameters.
 
 All return inputs are daily NET returns (after costs) on the backtest's calendar
 (union of both markets' sessions). Annualisation uses config.TRADING_DAYS = 252
-per CLAUDE.md §6; years for per-year rates are measured in calendar time.
 """
 
 from __future__ import annotations

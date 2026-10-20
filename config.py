@@ -36,7 +36,6 @@ PAIRS: dict[str, tuple[str, str, int]] = {
 }
 
 # Date-dependent ADR ratios, for any pair whose ratio changed mid-sample.
-# Format: name -> list of (effective_date, HK shares per ADR), sorted by date.
 # The ratio applies from effective_date (inclusive) until the next entry;
 # before the first entry the ratio in PAIRS applies.
 # Pairs not listed here use the constant ratio in PAIRS for the whole sample.
@@ -70,7 +69,7 @@ ALLOW_OOS = True
 CONNECT_EVENTS: dict[str, str] = {"Alibaba": "2024-09-10", "NetEase": "2026-06-30", "Baidu": "2026-09-07"}
 CONNECT_WINDOW = 120  # trading days before/after the event
 
-# Stock Connect analysis design (pre-registered before OOS; CLAUDE.md §6).
+# Stock Connect analysis design (pre-registered before OOS).
 CONNECT_FORMAL = "Alibaba"                    # effective date verified by the student (2024-09-10)
 CONNECT_DESCRIPTIVE = ["NetEase", "Baidu"]    # < 120 post-event days before END: plot only, no inference
 # Comparison pairs for Alibaba: Southbound status UNCHANGED across Alibaba's +/-120-day window
@@ -145,7 +144,7 @@ TRADING_DAYS = 252         # annualisation (Sharpe, borrow accrual)
 COST_MULTIPLIERS = [0.0, 0.5, 1.0, 2.0]
 
 # ---------------------------------------------------------------------------
-# Out-of-universe robustness test (pre-registered 2026-10-09; CLAUDE.md §6, Session 6b)
+# Out-of-universe robustness test (pre-registered 2026-10-09)
 # ---------------------------------------------------------------------------
 # name: (US ticker, HK ticker on Yahoo, HK shares per ADR). Ratios and the notes are
 # from memory and UNVERIFIED: the student checks each one (docs/HOLDOUT_VERIFICATION.md)

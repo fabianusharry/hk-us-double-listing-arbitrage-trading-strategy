@@ -1,6 +1,6 @@
 """Leg-level daily P&L with execution timing (no costs; costs.py adds them in Session 5).
 
-Timing (CLAUDE.md §6), for a decision made at the US open on aligned day t:
+Timing, for a decision made at the US open on aligned day t:
   US leg (main)        trades at the US close on t        -> earns close-to-close from the next US session
   US leg (upper bound) trades at the US open on t         -> earns t's intraday part (NOT tradable; Session 6)
   HK leg               trades at the HK open of the next HK session after t
@@ -284,7 +284,7 @@ def run_backtest(
 
 
 # ---------------------------------------------------------------------------
-# Run log (every parameter combination tried; CLAUDE.md rule 3)
+# Run log (every parameter combination tried)
 # ---------------------------------------------------------------------------
 GRID_LOG_COLUMNS = [
     "timestamp_utc", "run_type", "period", "signal", "us_exec", "L", "k", "exit_z", "H", "stop_z",
@@ -337,7 +337,7 @@ def run_grid(
     """Run every grid cell for every signal, log each run, and time the whole loop.
 
     Output: (portfolio table: one row per run, per-pair table, total seconds).
-    Every run is appended to log_path BEFORE the next one starts (CLAUDE.md rule 3).
+    Every run is appended to log_path BEFORE the next one starts.
     """
     import time
     from src import metrics

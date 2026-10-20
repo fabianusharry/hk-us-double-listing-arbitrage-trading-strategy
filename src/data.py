@@ -237,15 +237,16 @@ def suspicious_rows(ticker: str, df: pd.DataFrame) -> pd.DataFrame:
     a filled-in quote), zero_volume (not checked for FX, which has no volume).
     """
     is_fx = ticker == config.FX_TICKER
-    px = df[PRICE_COLUMNS]
+    price_col = df[PRICE_COLUMNS]
     tol = 1e-9
     checks = {
-        "missing_price": px.isna().any(axis=1),
-        "nonpositive_price": (px <= 0).any(axis=1),
+        "missing_price": price_col.isna().any(axis=1),
+        "nonpositive_price": (price_col <= 0).any(axis=1),
         "open_outside_range": (df["open"] < df["low"] - tol) | (df["open"] > df["high"] + tol),
-        "flat_bar": (px.nunique(axis=1) == 1) & (df["volume"] > 0) & (not is_fx),
+        "flat_bar": (price_col.nunique(axis=1) == 1) & (df["volume"] > 0) & (not is_fx),
         "zero_volume": (df["volume"] == 0) & (not is_fx),
     }
+
     rows = []
     for issue, mask in checks.items():
         for d in df.index[mask.fillna(False).to_numpy(bool)]:
@@ -285,6 +286,7 @@ def quality_report(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.Da
             "n_splits": len(splits),
             "split_details": "; ".join(f"{d.date()}:{v:g}" for d, v in splits.items()),
         })
+
     return pd.DataFrame(summary), pd.concat(detail, ignore_index=True)
 
 

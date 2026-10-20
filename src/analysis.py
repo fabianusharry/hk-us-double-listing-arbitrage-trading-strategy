@@ -254,7 +254,7 @@ def run_analysis(spreads: pd.DataFrame, out_dir: Path = config.RESULTS_DIR) -> d
 
 
 # ---------------------------------------------------------------------------
-# Stock Connect event study (pre-registered design: CLAUDE.md §6)
+# Stock Connect event study
 # ---------------------------------------------------------------------------
 def event_windows(dates: pd.DatetimeIndex, event: str, window: int) -> tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp]:
     """(first 'before' date, event date, last 'after' date) on one pair's aligned calendar.
