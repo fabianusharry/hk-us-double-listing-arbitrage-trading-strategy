@@ -1,4 +1,4 @@
-"""Synthetic dual-listed pair for the backtest tests and the notebook placebo.
+"""Synthetic dual-listed pair for the backtest tests.
 
 One efficient log price E is observed at the four session times of each day, in
 real-time order (ET):

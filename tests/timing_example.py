@@ -8,7 +8,7 @@
 tests/test_backtest.py asserts the two agree. Run this file to print the
 walkthrough table, so every number quoted in the notes comes from code:
 
-    .venv/bin/python -m src.timing_example
+    .venv/bin/python -m tests.timing_example
 """
 
 import pandas as pd
@@ -73,7 +73,7 @@ def dollar_ledger(start_equity: float = 1_000_000.0, sizing: str = "hold") -> pd
 def engine_result() -> pd.DataFrame:
     """The same example run through the engine."""
     from src.backtest import backtest_pair, leg_returns
-    from src.synthetic import _frame
+    from tests.synthetic import _frame
 
     fx = pd.Series(1.0, index=pd.DatetimeIndex(DAYS))
     us = leg_returns(_frame(DAYS, US_OPEN, US_CLOSE))
