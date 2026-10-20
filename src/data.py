@@ -46,12 +46,6 @@ class OOSAccessError(RuntimeError):
 # Out-of-sample firewall
 # ---------------------------------------------------------------------------
 def check_oos_allowed(start: str | None, end: str | None) -> None:
-    """Raise OOSAccessError if [start, end] touches the OOS period while it is locked.
-
-    Inputs: requested start/end dates (None = unbounded on that side).
-    Output: None; raises if the request reaches OOS_START or later and
-    config.ALLOW_OOS is False. An unbounded end counts as reaching OOS.
-    """
     if config.ALLOW_OOS:
         return
     oos = pd.Timestamp(config.OOS_START)
@@ -128,15 +122,12 @@ def download_raw(
     end: str = config.DOWNLOAD_END,
     raw_dir: Path = config.RAW_DIR,
 ) -> list[Path]:
-    """Fetch every ticker and write the snapshot CSVs plus manifest.json.
-
-    Inputs: tickers (default: config.all_tickers()), download window, output dir.
-    Output: list of CSV paths written.
-    All tickers are fetched before anything is written, so a failure part-way
-    leaves the existing snapshot untouched rather than half-replaced.
-    This deliberately downloads the full window including OOS dates: the
-    snapshot must be complete and frozen. The firewall is enforced on reading.
     """
+    Fetch every ticker and write the snapshot CSVs plus manifest.json
+    This is used if on submission you want to rerun all the test with the newest data
+    Default of REFRESH_DATA will always be FALSE
+    """
+
     import yfinance as yf
 
     tickers = tickers or config.all_tickers()
@@ -177,7 +168,6 @@ def download_raw(
 # Load (offline)
 # ---------------------------------------------------------------------------
 def latest_snapshot(ticker: str, raw_dir: Path = config.RAW_DIR) -> Path:
-    """Return the most recent snapshot CSV for a ticker (by the date in its name)."""
     candidates = sorted(Path(raw_dir).glob(f"{ticker}_????????.csv"))
     if not candidates:
         raise FileNotFoundError(f"No snapshot for {ticker} in {raw_dir}. Run download_raw() first.")
@@ -185,7 +175,6 @@ def latest_snapshot(ticker: str, raw_dir: Path = config.RAW_DIR) -> Path:
 
 
 def read_snapshot(path: Path) -> pd.DataFrame:
-    """Read one snapshot CSV into the standard frame (DatetimeIndex `date`, float columns)."""
     df = pd.read_csv(path, index_col="date", parse_dates=["date"])
     missing = set(COLUMNS) - set(df.columns)
     if missing:

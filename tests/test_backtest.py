@@ -270,6 +270,28 @@ def test_log_run_appends_rows_and_rejects_unknown_columns(tmp_path):
         backtest.log_run({"bogus": 1}, path)
 
 
+def test_grid_stays_in_sample_when_oos_is_allowed(monkeypatch, tmp_path):
+    # With ALLOW_OOS = True, run_backtest's default end is END. The grid must still
+    # stop at IS_END: same result as an explicit in-sample run, not the full-sample one.
+    a = simulate_pair(1000, sigma=0.003, phi=0.9, mis_sd=0.02, start="2021-01-04", seed=5)
+    assert a["spreads"]["date"].max() > pd.Timestamp(config.OOS_START)
+    monkeypatch.setattr(config, "ALLOW_OOS", True)
+    monkeypatch.setattr(config, "PAIRS", {"A": ("UA", "1.HK", 1)})
+    p = Params(L=40, k=1.5, exit_z=0.0, H=10)
+    monkeypatch.setattr(backtest, "grid_params", lambda: [p])
+    spreads = a["spreads"].assign(pair="A")
+    frames = {"UA": a["us"], "1.HK": a["hk"], config.FX_TICKER: a["fx"]}
+
+    grid, _, _ = backtest.run_grid(spreads, frames, signals=("spread",), cost_multiplier=0.0,
+                                   log_path=tmp_path / "log.csv")
+    from src.metrics import summarize_backtest
+    run = lambda **kw: summarize_backtest(run_backtest(spreads, frames, p, cost_multiplier=0.0, **kw))[0]
+    is_only, full = run(start=config.IS_START, end=config.IS_END), run()
+    assert full["n_trades"] > is_only["n_trades"]                # the test can tell the two apart
+    assert grid.loc[0, "n_trades"] == is_only["n_trades"]
+    assert grid.loc[0, "sharpe"] == pytest.approx(is_only["sharpe"], abs=1e-12)
+
+
 def test_break_even_multiplier_brackets_zero_sharpe():
     a = simulate_pair(600, sigma=0.003, phi=0.93, mis_sd=0.02, seed=3)
     universe = {"A": ("UA", "1.HK", 1)}

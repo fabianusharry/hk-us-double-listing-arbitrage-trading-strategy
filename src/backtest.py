@@ -325,9 +325,14 @@ def run_grid(
     cost_multiplier: float = 1.0,
     period: str = "IS",
     log_path: Path = config.GRID_LOG,
+    start: str = config.IS_START,
+    end: str = config.IS_END,
 ) -> tuple[pd.DataFrame, pd.DataFrame, float]:
     """Run every grid cell for every signal, log each run, and time the whole loop.
 
+    The window is passed explicitly (default: in-sample) rather than left to
+    run_backtest's default, which extends to END once ALLOW_OOS is True: tuning
+    must never see out-of-sample days, whatever the firewall flag says.
     Output: (portfolio table: one row per run, per-pair table, total seconds).
     Every run is appended to log_path BEFORE the next one starts.
     """
@@ -339,11 +344,20 @@ def run_grid(
     for signal in signals:
         for p in grid_params():
             t0 = time.perf_counter()
-            res = run_backtest(spreads, frames, p, signal=signal, cost_multiplier=cost_multiplier)
+            res = run_backtest(spreads, frames, p, signal=signal, start=start, end=end,
+                               cost_multiplier=cost_multiplier)
             summary, pairs = metrics.summarize_backtest(res)
             elapsed = time.perf_counter() - t0
-            row = {"run_type": "grid", "period": period, "signal": signal, "us_exec": "close",
-                   **p.as_dict(), "cost_multiplier": cost_multiplier, **summary, "elapsed_sec": round(elapsed, 4)}
+            row = {
+                "run_type": "grid", 
+                "period": period, 
+                "signal": signal, 
+                "us_exec": "close",
+                **p.as_dict(), 
+                "cost_multiplier": cost_multiplier, 
+                **summary, 
+                "elapsed_sec": round(elapsed, 4),
+            }
             log_run(row, log_path)
             rows.append(row)
             pair_rows.append(pairs.assign(signal=signal, **p.as_dict()).rename_axis("pair").reset_index())

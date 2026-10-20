@@ -70,7 +70,7 @@ def dollar_ledger(start_equity: float = 1_000_000.0, sizing: str = "hold") -> pd
     return pd.DataFrame(rows).set_index("date")
 
 
-def xengine_result() -> pd.DataFrame:
+def engine_result() -> pd.DataFrame:
     """The same example run through the engine."""
     from src.backtest import backtest_pair, leg_returns
     from src.synthetic import _frame
