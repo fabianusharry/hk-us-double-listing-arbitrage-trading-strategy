@@ -41,11 +41,6 @@ def calendar(code: str) -> xc.ExchangeCalendar:
 # 1. ADR ratio
 # ---------------------------------------------------------------------------
 def ratio_on(name: str, dates: pd.DatetimeIndex, pairs: dict | None = None) -> pd.Series:
-    """HK shares per ADR for each date.
-
-    Uses pairs[name] (default config.PAIRS) as the base ratio and applies config.RATIO_CHANGES
-    entries from their effective date (inclusive) onwards.
-    """
     ratio = pd.Series(float((pairs or config.PAIRS)[name][2]), index=dates, name="ratio")
     for effective, value in config.RATIO_CHANGES.get(name, []):
         ratio[dates >= pd.Timestamp(effective)] = float(value)
@@ -56,14 +51,7 @@ def ratio_on(name: str, dates: pd.DatetimeIndex, pairs: dict | None = None) -> p
 # 2. Bad HK bars
 # ---------------------------------------------------------------------------
 def hk_bar_flags(hk: pd.DataFrame) -> pd.DataFrame:
-    """Classify Yahoo's single-price, zero-volume HK bars (open=high=low=close, volume=0).
-
-    Output: DataFrame indexed like `hk` with boolean columns
-      - drop_bar: single-price bar on a normal session -> the close itself is
-        not trustworthy (e.g. 9888.HK on 2022-03-14), so the date is dropped.
-      - open_unreliable: single-price bar on an XHKG early-close (half-day)
-        session -> the close is kept, but the open is not a real open.
-    """
+    # Classify Yahoo's single-price, zero-volume HK bars (open=high=low=close, volume=0).
     single = (hk[PRICE_COLUMNS].nunique(axis=1) == 1) & (hk["volume"] == 0)
     early = hk.index.isin(calendar("XHKG").early_closes)
     return pd.DataFrame({"drop_bar": single & ~early, "open_unreliable": single & early}, index=hk.index)
@@ -200,14 +188,6 @@ def match_dividends(name: str, us: pd.DataFrame, hk: pd.DataFrame, fx: pd.DataFr
 def add_backs(
     index: pd.DatetimeIndex, us_obs: pd.DatetimeIndex, hk_obs: pd.DatetimeIndex, events: pd.DataFrame
 ) -> tuple[pd.DataFrame, list[int]]:
-    """Dividend add-backs for one spread reading.
-
-    A reading compares a US price observed on date us_obs[i] with an HK price
-    observed on hk_obs[i]. The US price is ex-dividend iff us_obs >= us_ex; the
-    HK price iff hk_obs >= hk_ex. When exactly one leg is ex, its declared
-    dividend is added back so the reading has no artificial jump.
-    Output: (adj with columns us, hk indexed by `index`; days adjusted per event).
-    """
     adj = pd.DataFrame(0.0, index=index, columns=["us", "hk"])
     days = []
     for ev in events.itertuples(index=False):
@@ -225,24 +205,8 @@ def add_backs(
 def dividend_adjustments(
     name: str, dates: pd.DatetimeIndex, us_prev_dates: pd.DatetimeIndex, events: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Add-back amounts that remove fake spread jumps from ex-date mismatches.
+    # Add-back amounts that remove fake spread jumps from ex-date mismatches.
 
-    Morning reading (US open t vs HK close t): both legs observed on t, so a
-    correction is needed only when the two ex-dates differ; on aligned dates in
-    [first ex-date, second ex-date) the leg that went ex first gets its dividend
-    added back.
-    Evening reading (US close of the previous US session vs HK open t): the legs
-    are observed on different dates, so even a same-day ex-date needs one day of
-    correction (the HK open on ex-date t is ex, the US close the evening before
-    is still cum).
-    Dividends are announced weeks ahead, so this uses no future data.
-    Used for the spread SIGNAL only; P&L must use raw prices + cash dividends.
-
-    Output: (adj, log)
-      - adj: index `dates`; div_adj_us, div_adj_hk (morning), div_adj_us_eve,
-        div_adj_hk_eve (evening); US in USD per ADR, HK in HKD per share.
-      - log: one row per event with the morning action and days adjusted per reading.
-    """
     morning, days_m = add_backs(dates, dates, dates, events)
     evening, days_e = add_backs(dates, us_prev_dates, dates, events)
     adj = pd.DataFrame({

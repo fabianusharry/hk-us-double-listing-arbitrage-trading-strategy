@@ -188,14 +188,7 @@ def load_raw(
     end: str | None = None,
     raw_dir: Path = config.RAW_DIR,
 ) -> dict[str, pd.DataFrame]:
-    """Load the snapshot from disk only (no network).
-
-    Inputs: tickers (default: all), start/end inclusive dates. While OOS is
-    locked, end defaults to config.IS_END; otherwise to the full snapshot.
-    Start defaults to the first row (including pre-START warm-up history).
-    Output: {ticker: DataFrame} sliced to [start, end].
-    Raises OOSAccessError for any request reaching OOS while ALLOW_OOS is False.
-    """
+    # Load the snapshot from data folder
     if end is None and not config.ALLOW_OOS:
         end = config.IS_END
     check_oos_allowed(start, end)
@@ -219,15 +212,11 @@ def currency_of(ticker: str) -> str:
 
 
 def suspicious_rows(ticker: str, df: pd.DataFrame) -> pd.DataFrame:
-    """Return one row per (date, issue) for bars that need a human look.
-
-    Issues: missing_price, nonpositive_price, open_outside_range (open not within
-    [low, high]), flat_bar (open=high=low=close with volume > 0, a common sign of
-    a filled-in quote), zero_volume (not checked for FX, which has no volume).
-    """
+    # Return one row per (date, issue) for bars that need a human look.
     is_fx = ticker == config.FX_TICKER
     price_col = df[PRICE_COLUMNS]
     tol = 1e-9
+
     checks = {
         "missing_price": price_col.isna().any(axis=1),
         "nonpositive_price": (price_col <= 0).any(axis=1),
@@ -245,13 +234,7 @@ def suspicious_rows(ticker: str, df: pd.DataFrame) -> pd.DataFrame:
 
 
 def quality_report(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Summarise data quality per ticker.
-
-    Input: {ticker: snapshot frame} (e.g. from load_raw()).
-    Output: (summary with one row per ticker, detail with one row per suspicious bar).
-    max_gap_days is the largest calendar-day gap between consecutive rows; values
-    above ~4 days usually mean a holiday cluster (e.g. Lunar New Year) or missing data.
-    """
+    # Summarise data quality per ticker.
     summary, detail = [], []
     for ticker, df in frames.items():
         bad = suspicious_rows(ticker, df)
@@ -279,11 +262,14 @@ def quality_report(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.Da
     return pd.DataFrame(summary), pd.concat(detail, ignore_index=True)
 
 
-def save_quality_report(frames: dict[str, pd.DataFrame], log_dir: Path = config.LOG_DIR) -> pd.DataFrame:
-    """Write raw_quality.csv (summary) and raw_suspicious_rows.csv (detail); return the summary."""
+def save_quality_report(frames: dict[str, pd.DataFrame], log_dir: Path = config.LOG_DIR,
+                        suffix: str = "") -> pd.DataFrame:
+    # Write raw_quality{suffix}.csv (summary) and raw_suspicious_rows{suffix}.csv (detail); return the summary.
+    # suffix separates periods, e.g. "" = in-sample, "_oos" = out-of-sample.
+
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
     summary, detail = quality_report(frames)
-    summary.to_csv(log_dir / "raw_quality.csv", index=False)
-    detail.to_csv(log_dir / "raw_suspicious_rows.csv", index=False)
+    summary.to_csv(log_dir / f"raw_quality{suffix}.csv", index=False)
+    detail.to_csv(log_dir / f"raw_suspicious_rows{suffix}.csv", index=False)
     return summary

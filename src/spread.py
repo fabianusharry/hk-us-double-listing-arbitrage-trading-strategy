@@ -60,7 +60,7 @@ def save_spreads(
     log_dir: Path = config.LOG_DIR,
     flags_name: str = "spread_flags.csv",
 ) -> pd.DataFrame:
-    """Write data/processed/spreads.csv and results/logs/<flags_name>; return the flags."""
+    # Write data/processed/spreads.csv and results/logs/<flags_name>; return the flags.
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(log_dir).mkdir(parents=True, exist_ok=True)

@@ -328,14 +328,7 @@ def run_grid(
     start: str = config.IS_START,
     end: str = config.IS_END,
 ) -> tuple[pd.DataFrame, pd.DataFrame, float]:
-    """Run every grid cell for every signal, log each run, and time the whole loop.
-
-    The window is passed explicitly (default: in-sample) rather than left to
-    run_backtest's default, which extends to END once ALLOW_OOS is True: tuning
-    must never see out-of-sample days, whatever the firewall flag says.
-    Output: (portfolio table: one row per run, per-pair table, total seconds).
-    Every run is appended to log_path BEFORE the next one starts.
-    """
+    # Run every grid cell for every signal, log each run, and time the whole loop.
     import time
     from src import metrics
 

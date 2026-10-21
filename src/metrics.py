@@ -17,17 +17,17 @@ import config
 # Return metrics
 # ---------------------------------------------------------------------------
 def cumulative_return(r: pd.Series) -> float:
-    """Total compounded return: prod(1 + r) − 1."""
+    # Total compounded return: prod(1 + r) − 1
     return float((1 + r).prod() - 1)
 
 
 def years(r: pd.Series) -> float:
-    """Calendar length of the series in years (first to last date)."""
+    # Calendar length of the series in years (first to last date)
     return max((r.index.max() - r.index.min()).days, 1) / 365.25
 
 
 def annualised_return(r: pd.Series) -> float:
-    """Geometric annual return over the series' calendar length."""
+    # Geometric annual return over the series' calendar length
     return float((1 + cumulative_return(r)) ** (1 / years(r)) - 1)
 
 
@@ -36,13 +36,13 @@ def annualised_vol(r: pd.Series) -> float:
 
 
 def sharpe(r: pd.Series) -> float:
-    """mean / std of daily returns × √252, risk-free = 0. NaN if the series never moves."""
+    # mean / std of daily returns × √252, risk-free = 0. NaN if the series never moves.
     sd = r.std()
     return float(r.mean() / sd * np.sqrt(config.TRADING_DAYS)) if sd > 0 else float("nan")
 
 
 def max_drawdown(r: pd.Series) -> float:
-    """Largest peak-to-trough fall of the equity curve (a negative number, 0 if none)."""
+    # Largest peak-to-trough fall of the equity curve (a negative number, 0 if none)
     equity = (1 + r).cumprod()
     peak = np.maximum(equity.cummax(), 1.0)  # the starting capital counts as a peak
     return float((equity / peak - 1).min())
@@ -167,9 +167,15 @@ def trade_table(result: dict) -> pd.DataFrame:
     for name, r in result["pairs"].items():
         tr = trade_returns(r["daily"], r["trades"])
         for (_, t), ret in zip(r["trades"].iterrows(), tr.to_numpy()):
-            rows.append({"pair": name, "entry": t.entry_date.date(), "direction": int(t.direction),
-                         "days_held": int(t.days_held), "exit_reason": t.exit_reason,
-                         "trade_return": ret, "contribution": ret * w})
+            rows.append({
+                "pair": name, 
+                "entry": t.entry_date.date(), 
+                "direction": int(t.direction),
+                "days_held": int(t.days_held), 
+                "exit_reason": t.exit_reason,
+                "trade_return": ret, 
+                "contribution": ret * w,
+            })
     return pd.DataFrame(rows).sort_values("contribution", ascending=False).reset_index(drop=True)
 
 

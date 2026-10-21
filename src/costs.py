@@ -26,21 +26,16 @@ class CostModel:
     borrow_annual: float  # fraction of short value per year
 
     def trade_cost(self, notional: float, leg: str) -> float:
-        """Cost in dollars of trading `notional` dollars on leg 'us' or 'hk'."""
+        # Cost in dollars of trading `notional` dollars on leg 'us' or 'hk'
         return abs(notional) * (self.us_side if leg == "us" else self.hk_side)
 
     def borrow_cost(self, short_value: float, days: int) -> float:
-        """Borrow fee in dollars for holding `short_value` dollars short for `days` calendar days."""
+        # Borrow fee in dollars for holding `short_value` dollars short for `days` calendar days
         return abs(short_value) * self.borrow_annual * days / 365.0
 
 
 def cost_model(pair: str, multiplier: float = 1.0, half_spread: float | None = None,
                borrow_annual: float | None = None) -> CostModel:
-    """Build the CostModel for a pair, scaled by `multiplier`.
-
-    half_spread / borrow_annual default to config (HALF_SPREAD[pair], BORROW_RATE_ANNUAL);
-    pass them explicitly for pairs outside the main universe or for a borrow sensitivity.
-    """
     half_spread = config.HALF_SPREAD[pair] if half_spread is None else half_spread
     borrow = config.BORROW_RATE_ANNUAL if borrow_annual is None else borrow_annual
     us = config.COMMISSION + half_spread
@@ -48,8 +43,6 @@ def cost_model(pair: str, multiplier: float = 1.0, half_spread: float | None = N
     return CostModel(us_side=multiplier * us, hk_side=multiplier * hk,
                      borrow_annual=multiplier * borrow)
 
-
 def round_trip_cost(pair: str, multiplier: float = 1.0) -> float:
-    """Enter + exit on both legs, as a fraction of ONE leg's notional (no borrow)."""
     m = cost_model(pair, multiplier)
     return 2 * (m.us_side + m.hk_side)

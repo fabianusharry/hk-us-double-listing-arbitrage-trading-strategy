@@ -108,3 +108,13 @@ def test_quality_report_skips_volume_checks_for_fx():
         df[col] = df["close"]
     summary, _ = data.quality_report({config.FX_TICKER: df})
     assert summary.iloc[0]["zero_volume"] == 0 and summary.iloc[0]["flat_bar"] == 0
+
+
+def test_save_quality_report_writes_both_files_per_suffix(tmp_path):
+    df = make_frame("2022-01-03", 5)
+    df.iloc[2, df.columns.get_loc("volume")] = 0.0            # one flagged bar
+    data.save_quality_report({"AAA": df}, log_dir=tmp_path)
+    data.save_quality_report({"AAA": df}, log_dir=tmp_path, suffix="_oos")
+    for suffix in ("", "_oos"):
+        assert pd.read_csv(tmp_path / f"raw_quality{suffix}.csv")["zero_volume"].tolist() == [1]
+        assert pd.read_csv(tmp_path / f"raw_suspicious_rows{suffix}.csv")["issue"].tolist() == ["zero_volume"]
